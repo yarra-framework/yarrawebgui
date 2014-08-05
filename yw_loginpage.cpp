@@ -13,6 +13,7 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
 
     Wt::WVBoxLayout *layout = new Wt::WVBoxLayout();
     layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
     this->setLayout(layout);
 
     WContainerWidget* panelcontainer=new WContainerWidget();
@@ -21,15 +22,23 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     Wt::WPanel *panel = new Wt::WPanel(panelcontainer);
     panel->addStyleClass("centered");
     panel->setTitle("YarraServer: 64core_1");
+    panel->addStyleClass("modal-content");
 
+    // TODO: Define CSS class for background color
     WContainerWidget* haligncontainer=new WContainerWidget();
+    haligncontainer->decorationStyle().setBackgroundColor(WColor(128,128,128));
     Wt::WHBoxLayout *halignlayout=new Wt::WHBoxLayout();
     halignlayout->setContentsMargins(0, 0, 0, 0);
     haligncontainer->setLayout(halignlayout);
 
-    layout->addWidget(new WContainerWidget(),1);
+    WContainerWidget* dummyContainer1=new WContainerWidget();
+    dummyContainer1->decorationStyle().setBackgroundColor(WColor(128,128,128));
+    WContainerWidget* dummyContainer2=new WContainerWidget();
+    dummyContainer2->decorationStyle().setBackgroundColor(WColor(128,128,128));
+
+    layout->addWidget(dummyContainer1,1);
     layout->addWidget(haligncontainer);
-    layout->addWidget(new WContainerWidget(),1);
+    layout->addWidget(dummyContainer2,1);
 
     halignlayout->addWidget(new WContainerWidget(),1);
     halignlayout->addWidget(panelcontainer);
