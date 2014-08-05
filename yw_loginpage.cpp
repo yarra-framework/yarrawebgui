@@ -1,4 +1,5 @@
 #include <Wt/WPushButton>
+#include <Wt/WLabel>
 
 #include "yw_loginpage.h"
 #include "yw_application.h"
@@ -14,9 +15,12 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     layout->setContentsMargins(0, 0, 0, 0);
     this->setLayout(layout);
 
-    Wt::WPanel *panel = new Wt::WPanel();
+    WContainerWidget* panelcontainer=new WContainerWidget();
+    panelcontainer->resize(250, 300);
+
+    Wt::WPanel *panel = new Wt::WPanel(panelcontainer);
     panel->addStyleClass("centered");
-    panel->resize(400, 250);
+    panel->setTitle("YarraServer: 64core_1");
 
     WContainerWidget* haligncontainer=new WContainerWidget();
     Wt::WHBoxLayout *halignlayout=new Wt::WHBoxLayout();
@@ -28,17 +32,54 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     layout->addWidget(new WContainerWidget(),1);
 
     halignlayout->addWidget(new WContainerWidget(),1);
-    halignlayout->addWidget(panel);
+    halignlayout->addWidget(panelcontainer);
     halignlayout->addWidget(new WContainerWidget(),1);
 
     WContainerWidget* innercontainer=new WContainerWidget();
+    //innercontainer->addStyleClass("debug");
 
-    Wt::WPushButton *loginButton = new Wt::WPushButton("Login", innercontainer);
+    Wt::WVBoxLayout *innerlayout=new Wt::WVBoxLayout();
+    innerlayout->setContentsMargins(0, 0, 0, 0);
+    innerlayout->setSpacing(0);
+
+    Wt::WLabel* nameLabel = new Wt::WLabel("User: ");
+    nameLabel->setMargin(2,Wt::Bottom);
+    Wt::WLineEdit* nameEdit=new Wt::WLineEdit();
+    nameLabel->setBuddy(nameEdit);
+    nameEdit->setFirstFocus();
+
+    Wt::WLabel* pwdLabel = new Wt::WLabel("Password: ");
+    pwdLabel->setMargin(2,Wt::Bottom);
+    pwdLabel->setMargin(10,Wt::Top);
+
+    Wt::WLineEdit* pwdEdit=new Wt::WLineEdit();
+    pwdEdit->setEchoMode(Wt::WLineEdit::Password);
+    pwdLabel->setBuddy(pwdEdit);
+    pwdEdit->enterPressed().connect(this, &ywLoginPage::loginClick);
+
+    nameEdit->enterPressed().connect(std::bind([=] () {
+        pwdEdit->setFocus();
+        }));
+
+
+    Wt::WPushButton* loginButton = new Wt::WPushButton("Login");
     loginButton->setStyleClass("btn-primary");
+    loginButton->setMargin(18,Wt::Top);
+    loginButton->setMaximumSize(70,Wt::WLength::Auto);
     loginButton->clicked().connect(this, &ywLoginPage::loginClick);
+    loginButton->setDefault(true);
 
+    innerlayout->addWidget(nameLabel);
+    innerlayout->addWidget(nameEdit);
+    innerlayout->addWidget(pwdLabel);
+    innerlayout->addWidget(pwdEdit);
+    innerlayout->addStretch(1);
+    innerlayout->addWidget(loginButton,0,Wt::AlignRight );
+
+    innercontainer->setLayout(innerlayout);
     panel->setCentralWidget(innercontainer);
 
+    nameEdit->setFocus();
 }
 
 
