@@ -30,13 +30,24 @@ using namespace Wt;
 
 
 #include "yw_loginpage.h"
-
+#include "yw_statuspage.h"
+#include "yw_configpage.h"
+#include "yw_configuration.h"
 
 
 class ywApplication : public WApplication
 {
 public:
+
+    enum {
+        YW_USERLEVEL_TECH      =1,
+        YW_USERLEVEL_RESEARCHER=2,
+        YW_USERLEVEL_ADMIN     =3
+    };
+
     ywApplication(const WEnvironment& env);
+
+    void prepare(ywConfiguration* configInstance);
 
     void performLogin();
     void performLogout();
@@ -44,15 +55,14 @@ public:
 
     void showAbout();
 
-    WString userName;
+    ywConfiguration* configuration;
+    WString currentUser;
+    int     currentLevel;
 
 private:
-    ywLoginPage* loginPage;
-
-    WLineEdit* nameEdit_;
-    WText* greeting_;
-
-    void greet();
+    ywLoginPage*  loginPage;
+    ywStatusPage* statusPage;
+    ywConfigPage* configPage;
 };
 
 #endif // YW_APPLICATION_H

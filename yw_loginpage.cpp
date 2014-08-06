@@ -3,7 +3,7 @@
 
 #include "yw_loginpage.h"
 #include "yw_application.h"
-
+#include "yw_configuration.h"
 
 
 ywLoginPage::ywLoginPage(ywApplication* parent)
@@ -21,7 +21,7 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
 
     Wt::WPanel *panel = new Wt::WPanel(panelcontainer);
     panel->addStyleClass("centered");
-    panel->setTitle("YarraServer: 64core_1");
+    panel->setTitle("YarraServer: "+app->configuration->serverName);
     panel->addStyleClass("modal-content");
 
     // TODO: Define CSS class for background color
@@ -45,7 +45,7 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     halignlayout->addWidget(new WContainerWidget(),1);
 
     WContainerWidget* innercontainer=new WContainerWidget();
-    //innercontainer->addStyleClass("debug");
+    innercontainer->addStyleClass("form-group");
 
     Wt::WVBoxLayout *innerlayout=new Wt::WVBoxLayout();
     innerlayout->setContentsMargins(0, 0, 0, 0);
@@ -53,18 +53,21 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
 
     Wt::WLabel* nameLabel = new Wt::WLabel("User: ");
     nameLabel->setMargin(2,Wt::Bottom);
-    Wt::WLineEdit* nameEdit=new Wt::WLineEdit();
+    nameEdit=new Wt::WLineEdit();
     nameLabel->setBuddy(nameEdit);
     nameEdit->setFirstFocus();
 
-    Wt::WLabel* pwdLabel = new Wt::WLabel("Password: ");
+    pwdContainer=new WContainerWidget();
+
+    pwdLabel = new Wt::WLabel("Password: ",pwdContainer);
     pwdLabel->setMargin(2,Wt::Bottom);
     pwdLabel->setMargin(10,Wt::Top);
+    pwdLabel->addStyleClass("control-label");
 
-    Wt::WLineEdit* pwdEdit=new Wt::WLineEdit();
+    pwdEdit=new Wt::WLineEdit(pwdContainer);
     pwdEdit->setEchoMode(Wt::WLineEdit::Password);
-    pwdLabel->setBuddy(pwdEdit);
     pwdEdit->enterPressed().connect(this, &ywLoginPage::loginClick);
+    pwdLabel->setBuddy(pwdEdit);
 
     nameEdit->enterPressed().connect(std::bind([=] () {
         pwdEdit->setFocus();
@@ -80,10 +83,9 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
 
     innerlayout->addWidget(nameLabel);
     innerlayout->addWidget(nameEdit);
-    innerlayout->addWidget(pwdLabel);
-    innerlayout->addWidget(pwdEdit);
+    innerlayout->addWidget(pwdContainer);
     innerlayout->addStretch(1);
-    innerlayout->addWidget(loginButton,0,Wt::AlignRight );
+    innerlayout->addWidget(loginButton,0,Wt::AlignRight);
 
     innercontainer->setLayout(innerlayout);
     panel->setCentralWidget(innercontainer);
@@ -100,5 +102,23 @@ ywLoginPage* ywLoginPage::createInstance(ywApplication* parent)
 
 void ywLoginPage::loginClick()
 {
-    app->performLogin();
+    WString loginName=nameEdit->text();
+    WString loginPassword=pwdEdit->text();
+
+    ywUser* loginUser=app->configuration->validateUser(loginName, loginPassword);
+
+    if (loginUser==0)
+    {
+        // Login information is not correct
+        pwdContainer->addStyleClass("has-error");
+        pwdEdit->setText("");
+        pwdEdit->setFocus();
+    }
+    else
+    {
+        app->currentUser=loginUser->name;
+        app->currentLevel=loginUser->level;
+        app->performLogin();
+    }
 }
+

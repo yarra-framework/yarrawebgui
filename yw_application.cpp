@@ -7,6 +7,13 @@
 ywApplication::ywApplication(const WEnvironment& env)
   : WApplication(env)
 {
+    configuration=0;
+    loginPage=0;
+    statusPage=0;
+    configPage=0;
+    currentUser="None";
+    currentLevel=1;
+
     setLoadingIndicator(new Wt::WOverlayLoadingIndicator());
 
     Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);
@@ -15,22 +22,56 @@ ywApplication::ywApplication(const WEnvironment& env)
     setTheme(bootstrapTheme);
     useStyleSheet("style/bootstrap.min.css");
     useStyleSheet("style/yarra.css");
+}
 
-    setTitle("YarraServer: 64core_1");
-
-    userName="Admin";
+ void ywApplication::prepare(ywConfiguration* configInstance)
+{
+    configuration=configInstance;
 
     Wt::WVBoxLayout* layout=new Wt::WVBoxLayout();
     layout->setContentsMargins(0, 0, 0, 0);
     root()->setLayout(layout);
 
-    loginPage=ywLoginPage::createInstance(this);
-    layout->addWidget(loginPage,1);
-}
+    if (!configuration->isValid())
+    {
+        // Configuration is not valid. Show an error screen to inform the user.
+        WVBoxLayout *layout = new Wt::WVBoxLayout();
+        layout->setContentsMargins(0, 0, 0, 0);
+        root()->setLayout(layout);
 
-void ywApplication::greet()
-{
-    Wt::StandardButton answer = Wt::WMessageBox::show("Server Shutdown", "<p>Are you sure to shutdown the server?</p>", Wt::Ok | Wt::Cancel);
+        WContainerWidget* innercontainer=new WContainerWidget();
+        WHBoxLayout *layout2 = new Wt::WHBoxLayout();
+        innercontainer->setLayout(layout2);
+        layout->addWidget(new WContainerWidget(),1);
+        layout->addWidget(innercontainer);
+        layout->addWidget(new WContainerWidget(),1);
+
+        WContainerWidget* innercontainer2=new WContainerWidget();
+        WHBoxLayout *layout3 = new Wt::WHBoxLayout();
+        innercontainer2->setLayout(layout3);
+
+        layout2->addWidget(new WContainerWidget(),1);
+        layout2->addWidget(innercontainer2);
+        layout2->addWidget(new WContainerWidget(),1);
+
+        WPanel* panel = new Wt::WPanel();
+        panel->addStyleClass("panel panel-warning");
+        panel->setTitle("YarraServer: Invalid Configuration");
+        innercontainer2->setMaximumSize(500,300);
+
+        WText* textField=new WText();
+        textField->setText("The configuration of the YarraServer WebGUI is not valid. Therefore, the WebGUI is not available.<br /><br />Please check the configuration file YarraWebGUI.ini in the YarraServer installation directory.");
+        panel->setCentralWidget(textField);
+
+        layout3->addWidget(panel);
+    }
+    else
+    {
+        loginPage=ywLoginPage::createInstance(this);
+        layout->addWidget(loginPage,1);
+
+        setTitle("YarraServer: " + configuration->serverName);
+    }
 }
 
 
@@ -57,93 +98,30 @@ void ywApplication::performLogin()
     contentsStack->setTransitionAnimation(animation, false);
     layout_inner->addWidget(contentsStack,1);
 
+    statusPage=ywStatusPage::createInstance(this);
+    configPage=ywConfigPage::createInstance(this);
 
-    Wt::WContainerWidget* statusPage=new  Wt::WContainerWidget();
-    Wt::WVBoxLayout* statusPageLayout = new Wt::WVBoxLayout();
-    statusPage->setLayout(statusPageLayout);
-    statusPageLayout->setContentsMargins(0, 0, 0, 0);
-
-    Wt::WPanel *panel = new Wt::WPanel();
-    Wt::WContainerWidget *btncontainer = new Wt::WContainerWidget();
-
-    Wt::WPushButton *button = new Wt::WPushButton("Start", btncontainer);
-    button->setStyleClass("btn-primary");
-    button->clicked().connect(this, &ywApplication::greet);
-    button->setMargin(2);
-
-    button = new Wt::WPushButton("Stop", btncontainer);
-    button->setMargin(2);
-    button->setStyleClass("btn-primary");
-
-    button = new Wt::WPushButton("Kill Task", btncontainer);
-    button->setMargin(2);
-    button->setStyleClass("btn-primary");
-
-    button = new Wt::WPushButton("Refresh", btncontainer);
-    button->setStyleClass("btn");
-    button->setMargin(2);
-
-    panel->setCentralWidget(btncontainer);
-    panel->setMargin(30, Wt::Bottom);
-
-
-    Wt::WTabWidget *tabW = new Wt::WTabWidget();
-    tabW->addTab(new Wt::WTextArea("This is the contents of the first tab."),
-             "Status", Wt::WTabWidget::PreLoading);
-    tabW->addTab(new Wt::WTextArea("The contents of the tabs are pre-loaded in"
-                       " the browser to ensure swift switching."),
-             "Server Log", Wt::WTabWidget::PreLoading);
-    tabW->addTab(new Wt::WTextArea("You could change any other style attribute of the"
-                       " tab widget by modifying the style class."
-                       " The style class 'trhead' is applied to this tab."),
-             "Task Log", Wt::WTabWidget::PreLoading);
-
-
-    tabW->setStyleClass("tabwidget");
-
-    Wt::WText* head1=new Wt::WText("<h3>Server Activity</h3>");
-    head1->setMargin(6, Wt::Bottom);
-    statusPageLayout->addWidget(head1);
-    statusPageLayout->addWidget(tabW,1);
-
-    Wt::WText* head2=new Wt::WText("<h3>Runtime Control</h3>");
-    head2->setMargin(6, Wt::Bottom);
-    head2->setMargin(20, Wt::Top);
-
-    statusPageLayout->addWidget(head2);
-    statusPageLayout->addWidget(panel);
-
-
-
-    Wt::WContainerWidget* configPage=new  Wt::WContainerWidget();
-    Wt::WHBoxLayout* configPageLayout = new Wt::WHBoxLayout();
-    configPage->setLayout(configPageLayout);
-
-    Wt::WStackedWidget *configContents=new Wt::WStackedWidget();
-    configContents->setMargin(30, Wt::Bottom);
-    configContents->setMargin(30, Wt::Left);
-
-    Wt::WMenu *configMenu = new Wt::WMenu(configContents, Wt::Vertical, configPage);
-    configMenu->setStyleClass("nav nav-pills nav-stacked");
-    configMenu->setWidth(200);
-
-    configMenu->addItem("Internal paths", new Wt::WTextArea("Internal paths contents"));
-    configMenu->addItem("Anchor", new Wt::WTextArea("Anchor contents"));
-    configMenu->addItem("Stacked widget", new Wt::WTextArea("Stacked widget contents"));
-    configMenu->addItem("Tab widget", new Wt::WTextArea("Tab widget contents"));
-    configMenu->addItem("Menu", new Wt::WTextArea("Menu contents"));
-
-    configPageLayout->addWidget(configMenu);
-    configPageLayout->addWidget(configContents,1);
-
-
+    // Setup up the top menu in the navbar (depending on user role)
     Wt::WMenu *leftMenu = new Wt::WMenu(contentsStack);
-    leftMenu->addItem("Server Status", statusPage);
-    leftMenu->addItem("Task Queue", new Wt::WText("Layout content 1"));
-    leftMenu->addItem("Log Archive", new Wt::WText("Layout content 2"));
-    leftMenu->addItem("Configuration", configPage);
-    navbar->addMenu(leftMenu);
 
+    if (currentLevel==YW_USERLEVEL_ADMIN)
+    {
+        leftMenu->addItem("Server Status", statusPage);
+    }
+
+    leftMenu->addItem("Task Queue", new Wt::WText("Layout content 1"));
+
+    if ((currentLevel==YW_USERLEVEL_ADMIN) || (currentLevel==YW_USERLEVEL_RESEARCHER))
+    {
+        leftMenu->addItem("Log Archive", new Wt::WText("Layout content 2"));
+    }
+
+    if (currentLevel==YW_USERLEVEL_ADMIN)
+    {
+        leftMenu->addItem("Configuration", configPage);
+    }
+
+    navbar->addMenu(leftMenu);
 
     // Setup a Right-aligned menu.
     Wt::WMenu *rightMenu = new Wt::WMenu();
@@ -160,7 +138,7 @@ void ywApplication::performLogin()
     popup->addSeparator();
     popup->addItem("Logout")->triggered().connect(this, &ywApplication::requestLogout);
 
-    Wt::WMenuItem *item = new Wt::WMenuItem(userName);
+    Wt::WMenuItem *item = new Wt::WMenuItem("User: "+currentUser);
     item->setMenu(popup);
     rightMenu->addItem(item);
 
@@ -179,10 +157,17 @@ void ywApplication::requestLogout()
 void ywApplication::performLogout()
 {
     root()->layout()->clear();
+    statusPage=0;
+    configPage=0;
+
+    currentUser="None";
+    currentLevel=1;
+
     loginPage=ywLoginPage::createInstance(this);
     WVBoxLayout* layout=(WVBoxLayout*) root()->layout();
-    layout->addWidget(loginPage,1);
+    layout->addWidget(loginPage,1);    
 }
+
 
 void ywApplication::showAbout()
 {

@@ -17,6 +17,26 @@
   -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(114, 58, 153, 0.6);
   box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(114, 58, 153, 0.6);
 }
+.has-error .form-control:focus {
+  border-color: #D10606;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(209, 6, 6, 0.6);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(209, 6, 6, 0.6);
+}
+
+.has-error .form-control {
+  border-color: #D10606;
+}
+.has-error .help-block,
+.has-error .control-label,
+.has-error .form-control-feedback {
+  color: #D10606;
+}
+.has-error .form-control,
+.has-error .form-control:focus,
+.has-error .input-group-addon {
+  border: 1px solid #D10606;
+}
+
 .btn-primary {
   color: #ffffff;
   background-color: #580F8B;

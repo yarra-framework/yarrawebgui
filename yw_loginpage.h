@@ -19,6 +19,11 @@ public:
 
     ywApplication* app;
 
+    WLineEdit* nameEdit;
+    WLineEdit* pwdEdit;
+    WLabel* pwdLabel;
+    WContainerWidget* pwdContainer;
+
 };
 
 #endif // YW_LOGINPAGE_H

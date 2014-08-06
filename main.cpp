@@ -1,4 +1,5 @@
 #include <functional>
+#include <iostream>
 
 #include <Wt/WApplication>
 #include <Wt/WBreak>
@@ -25,16 +26,41 @@
 #include "yw_application.h"
 
 
+// The global configuration instance
+ywConfiguration configurationInstance;
+
 
 WApplication* createApplication(const WEnvironment& env)
 {
-    WApplication* app=new ywApplication(env);
-    return app;
+    ywApplication* app=new ywApplication(env);
+    app->prepare(&configurationInstance);
+    return (WApplication*) app;
 }
 
 
 int main(int argc, char **argv)
 {
-  return WRun(argc, argv, &createApplication);
+    configurationInstance.loadConfiguration();
+
+    // Prepare the arguments for calling the WRun commands
+    char arg1[] = "--docroot="".""";
+    char arg2[] = "--http-address";
+    char arg3[] = "0.0.0.0";
+    char arg4[] = "--http-port";
+    char arg5[8] = "8080";
+    // Overwrite the port number with the setting from the configuration file
+    strcpy(arg5,configurationInstance.port.toUTF8().data());
+
+    int argCount=6;
+    char* args[6];
+    args[0]=argv[0];
+    args[1]=arg1;
+    args[2]=arg2;
+    args[3]=arg3;
+    args[4]=arg4;
+    args[5]=arg5;
+
+    return WRun(argCount, args, &createApplication);
+    //return WRun(argc, argv, &createApplication);
 }
 
