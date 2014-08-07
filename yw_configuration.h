@@ -26,9 +26,20 @@ public:
     bool isValid();
 
     WString port;
+
     WString yarraPath;
+    WString yarraLogPath;
+    WString yarraModesPath;
+    WString yarraQueuePath;
+    WString yarraWorkPath;
+    WString yarraFailPath;
+    WString yarraStoragePath;
+    WString yarraModulesPath;
+
     WString serverName;
     WString serverType;
+
+
 
     vector<ywUser*> users;
 

@@ -33,6 +33,7 @@ using namespace Wt;
 #include "yw_statuspage.h"
 #include "yw_configpage.h"
 #include "yw_configuration.h"
+#include "yw_serverinterface.h"
 
 
 class ywApplication : public WApplication
@@ -56,6 +57,8 @@ public:
     void showAbout();
 
     ywConfiguration* configuration;
+    ywServerInterface server;
+
     WString currentUser;
     int     currentLevel;
 

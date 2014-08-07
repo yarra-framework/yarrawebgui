@@ -13,7 +13,8 @@ SOURCES += main.cpp \
     yw_application.cpp \
     yw_loginpage.cpp \
     yw_statuspage.cpp \
-    yw_configpage.cpp
+    yw_configpage.cpp \
+    yw_serverinterface.cpp
 
 HEADERS += \
     yw_configuration.h \
@@ -21,5 +22,6 @@ HEADERS += \
     yw_loginpage.h \
     yw_global.h \
     yw_statuspage.h \
-    yw_configpage.h
+    yw_configpage.h \
+    yw_serverinterface.h
 

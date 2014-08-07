@@ -14,6 +14,9 @@ ywApplication::ywApplication(const WEnvironment& env)
     currentUser="None";
     currentLevel=1;
 
+    // Pass the server interface an pointer for cross access
+    server.setAppInstance(this);
+
     setLoadingIndicator(new Wt::WOverlayLoadingIndicator());
 
     Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);

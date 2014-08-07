@@ -13,9 +13,18 @@ ywConfiguration::ywConfiguration()
 {       
     configurationValid=false;
 
-    yarraPath=".";
     serverName="Unknown";
     port="8080";
+
+    yarraPath=".";
+    yarraLogPath="/log";
+    yarraModesPath="/modes";
+    yarraQueuePath="/queue";
+    yarraWorkPath="/work";
+    yarraFailPath="/fail";
+    yarraStoragePath="/finished";
+    yarraModulesPath="/modules";
+
 }
 
 
@@ -81,6 +90,14 @@ void ywConfiguration::loadConfiguration()
         boost::property_tree::ini_parser::read_ini(serverFilename.toUTF8(), serverIni);
         serverName=WString::fromUTF8(serverIni.get<std::string>("Server.Name","Unknown"));
         serverType=WString::fromUTF8(serverIni.get<std::string>("Server.Type","Unknown"));
+
+        yarraLogPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Log",WString(yarraPath+yarraLogPath).toUTF8()));
+        yarraModesPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Modes",WString(yarraPath+yarraModesPath).toUTF8()));
+        yarraQueuePath=WString::fromUTF8(serverIni.get<std::string>("Paths/Queue",WString(yarraPath+yarraQueuePath).toUTF8()));
+        yarraWorkPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Work",WString(yarraPath+yarraWorkPath).toUTF8()));
+        yarraFailPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Fail",WString(yarraPath+yarraFailPath).toUTF8()));
+        yarraStoragePath=WString::fromUTF8(serverIni.get<std::string>("Paths/Storage",WString(yarraPath+yarraStoragePath).toUTF8()));
+        yarraModulesPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Modules",WString(yarraPath+yarraModulesPath).toUTF8()));
 
         configurationValid=true;
     }
