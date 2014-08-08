@@ -27,6 +27,7 @@ ywApplication::ywApplication(const WEnvironment& env)
     useStyleSheet("style/yarra.css");
 }
 
+
  void ywApplication::prepare(ywConfiguration* configInstance)
 {
     configuration=configInstance;
@@ -97,8 +98,8 @@ void ywApplication::performLogin()
     Wt::WStackedWidget *contentsStack = new Wt::WStackedWidget();
     contentsStack->addStyleClass("contents");
     contentsStack->setPadding(WLength(20), Wt::Horizontals);
-    Wt::WAnimation animation(Wt::WAnimation::Fade, Wt::WAnimation::Linear, 200);
-    contentsStack->setTransitionAnimation(animation, false);
+    //Wt::WAnimation animation(Wt::WAnimation::Fade, Wt::WAnimation::Linear, 200);
+    //contentsStack->setTransitionAnimation(animation, false);
     layout_inner->addWidget(contentsStack,1);
 
     statusPage=ywStatusPage::createInstance(this);
@@ -154,7 +155,6 @@ void ywApplication::requestLogout()
 {
     WTimer::singleShot(0, this, &ywApplication::performLogout);
 }
-
 
 
 void ywApplication::performLogout()

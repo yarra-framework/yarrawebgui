@@ -34,7 +34,7 @@ public:
     WString yarraWorkPath;
     WString yarraFailPath;
     WString yarraStoragePath;
-    WString yarraModulesPath;
+    WString yarraModulesPath;    
 
     WString serverName;
     WString serverType;

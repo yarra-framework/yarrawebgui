@@ -36,7 +36,7 @@ public:
 
     WTabWidget*  tabWidget;
     WScrollArea* statusScrollArea;
-    WText*       statusWidget;
+    WTemplate*       statusWidget;
     WScrollArea* serverLogScrollArea;
     WText*       serverLogWidget;
     WScrollArea* taskLogScrollArea;

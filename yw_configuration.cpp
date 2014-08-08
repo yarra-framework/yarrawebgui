@@ -24,7 +24,6 @@ ywConfiguration::ywConfiguration()
     yarraFailPath="/fail";
     yarraStoragePath="/finished";
     yarraModulesPath="/modules";
-
 }
 
 

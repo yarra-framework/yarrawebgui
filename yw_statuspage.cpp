@@ -25,9 +25,11 @@
 #include <Wt/WTextArea>
 #include <Wt/WString>
 #include <Wt/WScrollArea>
+#include <Wt/WTimer>
 
 #include "yw_statuspage.h"
 #include "yw_application.h"
+#include "yw_serverinterface.h"
 
 
 ywStatusPage::ywStatusPage(ywApplication* parent)
@@ -71,7 +73,7 @@ ywStatusPage::ywStatusPage(ywApplication* parent)
     WContainerWidget* statusContainer=new WContainerWidget();
     Wt::WVBoxLayout*  statusLayout=new Wt::WVBoxLayout();
     statusContainer->setLayout(statusLayout);
-    statusWidget=new Wt::WText();
+    statusWidget=new Wt::WTemplate();
     statusScrollArea=new Wt::WScrollArea();
     statusScrollArea->setWidget(statusWidget);
     statusLayout->addWidget(statusScrollArea);
@@ -84,8 +86,6 @@ ywStatusPage::ywStatusPage(ywApplication* parent)
     serverLogWidget->setTextFormat(Wt::PlainText);
     serverLogWidget->setWordWrap(false);
     serverLogScrollArea=new Wt::WScrollArea();
-    //serverLogScrollArea->setHorizontalScrollBarPolicy(Wt::WScrollArea::ScrollBarAlwaysOn);
-    //serverLogScrollArea->setScrollBarPolicy(Wt::WScrollArea::ScrollBarAlwaysOn);
     serverLogScrollArea->setWidget(serverLogWidget);
     serverLogLayout->addWidget(serverLogScrollArea);
 
@@ -154,11 +154,43 @@ void ywStatusPage::refreshCurrentTab()
 
 void ywStatusPage::refreshStatus()
 {
-    WString widgetText="";
+    app->server.updateStatus();
 
-    widgetText="Server is active and responsive.";
+    WString widgetText="<p>";
 
-    statusWidget->setText(widgetText);
+    switch (app->server.serverStatus)
+    {
+    case ywServerInterface::STATUS_UKNOWN:
+    default:
+        widgetText+="<span class=\"label label-danger\">ERROR</span>";
+        break;
+    case ywServerInterface::STATUS_DOWN:
+        widgetText+="<span class=\"label label-danger\">DOWN</span>";
+        break;
+    case ywServerInterface::STATUS_IDLE:
+        widgetText+="<span class=\"label label-success\">ACTIVE</span>&nbsp;<span class=\"label label-primary\">IDLE</span>";
+        break;
+    case ywServerInterface::STATUS_PROCESSING:
+        widgetText+="<span class=\"label label-success\">ACTIVE</span>&nbsp;<span class=\"label label-info\">PROCESSING</span>";
+        break;
+    case ywServerInterface::STATUS_PROCESSINGDOWN:
+        widgetText+="<span class=\"label label-success\">ACTIVE</span>&nbsp;<span class=\"label label-info\">PROCESSING</span>&nbsp;";
+        widgetText+="<span class=\"label label-warning\">SHUTDOWN</span>";
+        break;
+    }
+
+    widgetText+="</p><p><strong>Name: &nbsp;</strong>" + app->configuration->serverName + " (Server Type " + app->configuration->serverType + ")";
+    widgetText+="<br /><strong>Status: &nbsp;</strong>" + app->server.serverStatusText;
+
+    if  ((app->server.serverStatus==ywServerInterface::STATUS_PROCESSING) || (app->server.serverStatus==ywServerInterface::STATUS_PROCESSINGDOWN))
+    {
+        widgetText+="<br /><strong>Task: </strong>" + app->server.serverTaskID + "<br />";
+    }
+
+    widgetText+="</p>";
+
+
+    statusWidget->setTemplateText(widgetText,XHTMLUnsafeText);
 }
 
 
@@ -174,7 +206,7 @@ void ywStatusPage::refreshServerLog()
 
     if(!logfile) //Always test the file open.
     {
-        widgetText="ERROR: Unable to open server log file.";
+        widgetText="ERROR: Unable to open server log file (" + serverLogFilename + ")";
     }
     else
     {
@@ -190,8 +222,8 @@ void ywStatusPage::refreshServerLog()
 
 void ywStatusPage::refreshTaskLog()
 {
+    app->server.updateStatus();
     WString taskLogFilename=app->server.getTaskLogFilename();
-
     WString widgetText="";
 
     if (taskLogFilename.empty())
@@ -205,7 +237,7 @@ void ywStatusPage::refreshTaskLog()
 
         if(!logfile)
         {
-            widgetText="ERROR: Unable to open task log file.";
+            widgetText="ERROR: Unable to open task log file (" + taskLogFilename + ")";
         }
         else
         {
@@ -222,36 +254,79 @@ void ywStatusPage::refreshTaskLog()
 
 void ywStatusPage::callStartServer()
 {
-    bool serverRunning=false;
-    // TODO: Check if server is already running
+    app->server.updateStatus();
 
-    if (serverRunning)
+    if (app->server.serverRunning)
     {
         Wt::WMessageBox::show("Already Running",
-                              "<p>The server is already running and responsive.</p>", Wt::Ok);
+                              "The server is already running and responsive.", Wt::Ok);
     }
     else
     {
-        // TODO: Call command to start server
+        if (!app->server.startServer())
+        {
+            Wt::WMessageBox messageBox("Error", "A problem occured while starting the server.",
+                                       Wt::Information, Wt::Ok);
+            messageBox.setModal(true);
+            messageBox.setIcon(Wt::Critical);
+            messageBox.buttonClicked().connect(&messageBox, &WMessageBox::accept);
+            messageBox.exec();
+        }
 
-        // TODO: Launch timer in 1 sec and update status
+        // Launch timer in 1 sec and update status
+        WTimer::singleShot(1000, this, &ywStatusPage::refreshStatus);
     }
 }
 
 
 void ywStatusPage::callStopServer()
 {
-    Wt::StandardButton answer=Wt::WMessageBox::show("Server Shutdown",
-                                                    "<p>Are you sure to shutdown the server?</p><p>Tasks will not be processed until the server is started again.</p>",
-                                                    Wt::Ok | Wt::Cancel);
+    app->server.updateStatus();
+
+    if (app->server.serverStatus==ywServerInterface::STATUS_PROCESSINGDOWN)
+    {
+        Wt::WMessageBox::show("Server Shutdown",
+                              "Server is shutting down after the current task.", Wt::Ok);
+    }
+
+    bool taskIsActive=app->server.serverStatus==ywServerInterface::STATUS_PROCESSING;
+
+    Wt::StandardButton answer=Wt::Cancel;
+    if (app->server.serverRunning)
+    {
+        answer=Wt::WMessageBox::show("Server Shutdown",
+                                     "Are you sure to shutdown the server? Tasks will not be processed until the server is started again.",
+                                     Wt::Ok | Wt::Cancel);
+    }
+    else
+    {
+        answer=Wt::WMessageBox::show("Server Shutdown",
+                                     "The server is not running or might be unresponsive. Shall a shutdown be requested regardless?",
+                                     Wt::Ok | Wt::Cancel);
+    }
+
     if (answer==Wt::Ok)
     {
-        // Call shutdown command
+        if (!app->server.stopServer())
+        {
+            Wt::WMessageBox messageBox("Error", "A problem occured while stopping the server.",
+                                       Wt::Information, Wt::Ok);
+            messageBox.setModal(true);
+            messageBox.setIcon(Wt::Critical);
+            messageBox.buttonClicked().connect(&messageBox, &WMessageBox::accept);
+            messageBox.exec();
+        }
+        else
+        {
+            if (taskIsActive)
+            {
+                Wt::WMessageBox::show("Server Shutdown",
+                                      "Shutdown has been requested. Server will go down when the task has been completed.", Wt::Ok);
+            }
+        }
 
-        Wt::WMessageBox::show("Server Shutdown",
-                              "<p>Shutdown of the server has been requested.</p><p>If a task is active, it will go down when the task has been completed.</p>", Wt::Ok);
-
-        // TODO: Launch timer in 1 sec and update status
+        // Launch timer in 1 sec and update status
+        WTimer::singleShot(1000, this, &ywStatusPage::refreshStatus);
     }
 }
 
@@ -259,13 +334,23 @@ void ywStatusPage::callStopServer()
 void ywStatusPage::callKillServer()
 {
     Wt::StandardButton answer=Wt::WMessageBox::show("Kill Task",
-                                                    "<p>Are you sure to kill the active task?</p><p>This should only be done after ensuring that the task is unresponsive.</p>",
+                                                    "Are you sure to kill the active task? This should only be done after ensuring that the task is unresponsive.",
                                                     Wt::Ok | Wt::Cancel);
     if (answer==Wt::Ok)
     {
-        // TODO: Kill the current job
-    }
+        if (!app->server.killServer())
+        {
+            Wt::WMessageBox messageBox("Error", "A problem occured while killing the server process.",
+                                       Wt::Information, Wt::Ok);
+            messageBox.setModal(true);
+            messageBox.setIcon(Wt::Critical);
+            messageBox.buttonClicked().connect(&messageBox, &WMessageBox::accept);
+            messageBox.exec();
+        }
 
+        // Launch timer in 1 sec and update status
+        WTimer::singleShot(1000, this, &ywStatusPage::refreshStatus);
+    }
 }
 
 
