@@ -11,6 +11,11 @@
   padding: 5px 7px;
   height: 30px;
 }
+
+.combo {
+  height: 38px;
+}
+
 .form-control:focus {
   border-color: #723A99;
   outline: 0;

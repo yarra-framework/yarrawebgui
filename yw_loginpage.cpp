@@ -23,6 +23,7 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     panel->addStyleClass("centered");
     panel->setTitle("YarraServer: "+app->configuration->serverName);
     panel->addStyleClass("modal-content");
+    //panel->addStyleClass("panel-primary");
 
     // TODO: Define CSS class for background color
     WContainerWidget* haligncontainer=new WContainerWidget();

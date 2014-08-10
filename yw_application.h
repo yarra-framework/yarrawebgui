@@ -32,6 +32,8 @@ using namespace Wt;
 #include "yw_loginpage.h"
 #include "yw_statuspage.h"
 #include "yw_configpage.h"
+#include "yw_logpage.h"
+#include "yw_queuepage.h"
 #include "yw_configuration.h"
 #include "yw_serverinterface.h"
 
@@ -65,7 +67,12 @@ public:
 private:
     ywLoginPage*  loginPage;
     ywStatusPage* statusPage;
+    ywQueuePage*  queuePage;
+    ywLogPage*    logPage;
     ywConfigPage* configPage;
 };
 
+
 #endif // YW_APPLICATION_H
+
+

@@ -3,7 +3,7 @@ QT       -= gui
 
 TARGET = YarraWebGUI
 
-LIBS += -lwt -lwthttp -lboost_signals
+LIBS += -lwt -lwthttp -lboost_signals -lboost_system -lboost_filesystem
 QMAKE_CXXFLAGS += -DNDEBUG -std=c++0x -DWT_DEPRECATED_3_0_0
 CONFIG   += console
 CONFIG   -= app_bundle
@@ -14,7 +14,9 @@ SOURCES += main.cpp \
     yw_loginpage.cpp \
     yw_statuspage.cpp \
     yw_configpage.cpp \
-    yw_serverinterface.cpp
+    yw_serverinterface.cpp \
+    yw_logpage.cpp \
+    yw_queuepage.cpp
 
 HEADERS += \
     yw_configuration.h \
@@ -23,5 +25,7 @@ HEADERS += \
     yw_global.h \
     yw_statuspage.h \
     yw_configpage.h \
-    yw_serverinterface.h
+    yw_serverinterface.h \
+    yw_logpage.h \
+    yw_queuepage.h
 

@@ -10,6 +10,7 @@ ywApplication::ywApplication(const WEnvironment& env)
     configuration=0;
     loginPage=0;
     statusPage=0;
+    logPage=0;
     configPage=0;
     currentUser="None";
     currentLevel=1;
@@ -98,30 +99,29 @@ void ywApplication::performLogin()
     Wt::WStackedWidget *contentsStack = new Wt::WStackedWidget();
     contentsStack->addStyleClass("contents");
     contentsStack->setPadding(WLength(20), Wt::Horizontals);
-    //Wt::WAnimation animation(Wt::WAnimation::Fade, Wt::WAnimation::Linear, 200);
-    //contentsStack->setTransitionAnimation(animation, false);
     layout_inner->addWidget(contentsStack,1);
-
-    statusPage=ywStatusPage::createInstance(this);
-    configPage=ywConfigPage::createInstance(this);
 
     // Setup up the top menu in the navbar (depending on user role)
     Wt::WMenu *leftMenu = new Wt::WMenu(contentsStack);
 
     if (currentLevel==YW_USERLEVEL_ADMIN)
     {
+        statusPage=ywStatusPage::createInstance(this);
         leftMenu->addItem("Server Status", statusPage);
     }
 
-    leftMenu->addItem("Task Queue", new Wt::WText("Layout content 1"));
+    queuePage=ywQueuePage::createInstance(this);
+    leftMenu->addItem("Task Queue", queuePage);
 
     if ((currentLevel==YW_USERLEVEL_ADMIN) || (currentLevel==YW_USERLEVEL_RESEARCHER))
     {
-        leftMenu->addItem("Log Archive", new Wt::WText("Layout content 2"));
+        logPage=ywLogPage::createInstance(this);
+        leftMenu->addItem("Log Archive", logPage);
     }
 
     if (currentLevel==YW_USERLEVEL_ADMIN)
     {
+        configPage=ywConfigPage::createInstance(this);
         leftMenu->addItem("Configuration", configPage);
     }
 
