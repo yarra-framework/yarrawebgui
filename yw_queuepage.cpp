@@ -34,6 +34,19 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     Wt::WVBoxLayout* queuePageLayout = new Wt::WVBoxLayout();
     this->setLayout(queuePageLayout);
 
+
+    Wt::WTabWidget* tabWidget = new Wt::WTabWidget();
+
+    WContainerWidget* queueContainer=new WContainerWidget();
+    Wt::WVBoxLayout*  queueLayout=new Wt::WVBoxLayout();
+    queueContainer->setLayout(queueLayout);
+
+    queuePageLayout->addWidget(queueContainer);
+
+    Wt::WContainerWidget* centerContainer = new Wt::WContainerWidget;
+    Wt::WHBoxLayout* centerLayout = new Wt::WHBoxLayout();
+    centerContainer->setLayout(centerLayout);
+
     Wt::WContainerWidget* taskContainer = new Wt::WContainerWidget;
     Wt::WVBoxLayout* taskLayout = new Wt::WVBoxLayout();
     taskLayout->setSpacing(4);
@@ -42,6 +55,24 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     Wt::WScrollArea* scrollArea=new Wt::WScrollArea();
     scrollArea->setWidget(taskContainer);
 
+    centerLayout->addWidget(new Wt::WContainerWidget,1);
+    centerLayout->addWidget(scrollArea);
+    centerLayout->addWidget(new Wt::WContainerWidget,1);
+
+    queueLayout->addWidget(centerContainer);
+
+
+    WContainerWidget* failContainer=new WContainerWidget();
+    Wt::WVBoxLayout*  failLayout=new Wt::WVBoxLayout();
+    failContainer->setLayout(failLayout);
+
+
+    tabWidget->addTab(queueContainer, "Scheduled", Wt::WTabWidget::PreLoading);
+    tabWidget->addTab(failContainer,  "Failed",    Wt::WTabWidget::PreLoading);
+    //tabWidget->currentChanged().connect(this, &ywStatusPage::tabChanged);
+    tabWidget->setStyleClass("tabwidget");
+
+
     for (int i=0; i<10; i++)
     {
         WPanel* panel=new WPanel();
@@ -49,20 +80,20 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
         panel->setSelectable(true);
         if (i==0)
         {
-            panel->addStyleClass("panel-warning");
+            panel->addStyleClass("panel-prio");
         }
         else
         {
             if (i>4)
             {
-                panel->addStyleClass("panel-primary");
+                panel->addStyleClass("panel-night");
             }
             else
             {
-                panel->addStyleClass("panel-success");
+                panel->addStyleClass("panel-jobnormal");
             }
         }
-        panel->setMaximumSize(400,Wt::WLength::Auto);
+        //panel->setMaximumSize(600,Wt::WLength::Auto);
 
         WText* test=new WText();
         test->setText("This is a test job");
@@ -90,8 +121,11 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     button->setMargin(2);
     //button->clicked().connect(this, &ywLogPage::refreshLogs);
 
-    queuePageLayout->addWidget(scrollArea,1);
+    //queuePageLayout->addWidget(centerContainer,1);
+    queuePageLayout->addWidget(tabWidget,1);
     queuePageLayout->addWidget(btnContainer);
+
+    scrollArea->resize(600,Wt::WLength::Auto);
 
 }
 
