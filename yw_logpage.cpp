@@ -73,10 +73,13 @@ ywLogPage::ywLogPage(ywApplication* parent)
     downloadButton->setStyleClass("btn-primary");
     downloadButton->setLink(WLink((Wt::WResource*) &downloadRes));
 
-    deleteButton =new Wt::WPushButton("Delete", innerBtnContainer);
-    deleteButton->setMargin(2);
-    deleteButton->setStyleClass("btn-primary");
-    deleteButton->clicked().connect(this, &ywLogPage::deleteLog);
+    if (app->currentLevel==ywApplication::YW_USERLEVEL_ADMIN)
+    {
+        deleteButton =new Wt::WPushButton("Delete", innerBtnContainer);
+        deleteButton->setMargin(2);
+        deleteButton->setStyleClass("btn-primary");
+        deleteButton->clicked().connect(this, &ywLogPage::deleteLog);
+    }
 
     Wt::WPushButton* button=0;
     button =new Wt::WPushButton("Refresh", innerBtnContainer);
@@ -166,6 +169,7 @@ void ywLogPage::refreshLogs()
     {
         if ( fs::exists(logDir) && fs::is_directory(logDir))
         {
+            // TODO: Check if file extension is ".log"
             for( fs::directory_iterator dir_iter(logDir) ; dir_iter != end_iter ; ++dir_iter)
             {
                 if ( (fs::is_regular_file(dir_iter->status()) && (dir_iter->path().filename()!="yarra.log") ))
