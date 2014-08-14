@@ -30,6 +30,8 @@ public:
     void clearFailList();
     void clearQueueList();
 
+    void updateTaskInformation(WString taskName, WText* taskWidget, int taskType);
+
     void showInfo (WString taskName);
 
     Wt::WVBoxLayout* failtaskLayout;

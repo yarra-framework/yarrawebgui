@@ -145,7 +145,7 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
 {
     WPanel* panel=new WPanel();
     panel->setTitle(title);
-    panel->setSelectable(true);
+    //panel->setSelectable(true);
 
     switch (mode)
     {
@@ -173,14 +173,24 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
     WContainerWidget* innerWidget=new WContainerWidget();
     panel->setCentralWidget(innerWidget);
 
-    /*
-    panel->expanded().connect(std::bind([=] () {
-        innerLayout->addWidget(new WPushButton("Test"),0);
-    }));
-    */
 
-    WText* test=new WText(innerWidget);
-    test->setText("Under construction");
+    WText* taskInfo=new WText(innerWidget);
+    taskInfo->setText("");
+
+    panel->expanded().connect(std::bind([=] () {
+        if (taskInfo->text().empty())
+        {
+            updateTaskInformation(title, taskInfo, mode);
+        }
+    }));
+
+    panel->titleBarWidget()->clicked().connect( std::bind([=] () {
+        if (taskInfo->text().empty())
+        {
+            updateTaskInformation(title, taskInfo, mode);
+        }
+    }));
+
 
     if (app->currentLevel>ywApplication::YW_USERLEVEL_TECH)
     {
@@ -195,10 +205,38 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
         popup->addItem("Info")->triggered().connect(std::bind([=] () {
             showInfo(title);
         }));
-        popup->addItem("Change to PRIORITY")->triggered().connect(std::bind([=] () {
-        }));
-        popup->addItem("Delete")->triggered().connect(std::bind([=] () {
-        }));
+
+        if (mode==MODE_FAIL)
+        {
+            popup->addItem("Restart")->triggered().connect(std::bind([=] () {
+            }));
+        }
+        if ((mode!=MODE_PROC) && (mode!=MODE_FAIL))
+        {
+            popup->addSeparator();
+            if (mode!=MODE_NORMAL)
+            {
+                popup->addItem("Set mode to NORMAL")->triggered().connect(std::bind([=] () {
+                }));
+            }
+            if (mode!=MODE_PRIO)
+            {
+                popup->addItem("Set mode to PRIORITY")->triggered().connect(std::bind([=] () {
+                }));
+            }
+            if (mode!=MODE_NIGHT)
+            {
+                popup->addItem("Set moode to NIGHT")->triggered().connect(std::bind([=] () {
+                }));
+            }
+            popup->addSeparator();
+        }
+
+        if (mode!=MODE_PROC)
+        {
+            popup->addItem("Delete")->triggered().connect(std::bind([=] () {
+            }));
+        }
 
         WPushButton* button = new Wt::WPushButton("Edit");
         button->setMenu(popup);
@@ -209,6 +247,13 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
     }
 
     return panel;
+}
+
+
+void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int taskType)
+{
+    // TODO
+    taskWidget->setText("Getting info for: " + taskName);
 }
 
 
@@ -298,6 +343,7 @@ void ywQueuePage::refreshQueueList()
 
     WText* scheduledLabel=new WText("Scheduled Tasks");
     taskLayout->addWidget(scheduledLabel,Wt::Left);
+    /*
     for (int i=0; i<10; i++)
     {
         int mode=MODE_NORMAL;
@@ -318,6 +364,93 @@ void ywQueuePage::refreshQueueList()
         }
         taskLayout->addWidget(createQueuePanel(WString("GRASP_LIVER#45453#{1}").arg(i), mode),Wt::AlignMiddle);
     }
+    */
+
+    namespace fs = boost::filesystem;
+    fs::path queueDir(app->configuration->yarraQueuePath.toUTF8());
+    fs::directory_iterator end_iter;
+
+    typedef std::multimap<std::time_t,  boost::filesystem::path> result_set_t;
+    result_set_t result_set;
+
+    const string& ext_prio  =".task_prio";
+    const string& ext_normal=".task";
+    const string& ext_night =".task_night";
+
+    // First search for the ".task_prio" files
+    try
+    {
+        if ( fs::exists(queueDir) && fs::is_directory(queueDir))
+        {
+            for( fs::directory_iterator dir_iter(queueDir) ; dir_iter != end_iter ; ++dir_iter)
+            {
+                if ( (fs::is_regular_file(dir_iter->status()) && (dir_iter->path().extension()==ext_prio)) )
+                {
+                    result_set.insert(result_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+    }
+
+    int itemCount=0;
+    // Iterate backwards through the results list
+    for (result_set_t::reverse_iterator ii=result_set.rbegin(); ii!=result_set.rend(); ++ii)
+    {
+        WString scanName=WString((*ii).second.filename().generic_string());
+        taskLayout->addWidget(createQueuePanel(scanName, MODE_PRIO),Wt::AlignMiddle);
+        itemCount++;
+
+        // Only show max 100 entries to avoid slow speed.
+        if (itemCount>100)
+        {
+            break;
+        }
+    }
+
+    // Now search for the ".task" and ".task_night" files
+    result_set.clear();
+
+    try
+    {
+        if ( fs::exists(queueDir) && fs::is_directory(queueDir))
+        {
+            for( fs::directory_iterator dir_iter(queueDir) ; dir_iter != end_iter ; ++dir_iter)
+            {
+                if ( (fs::is_regular_file(dir_iter->status()) &&
+                      ( (dir_iter->path().extension()==ext_normal)) || (dir_iter->path().extension()==ext_night) ))
+                {
+                    result_set.insert(result_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+    }
+
+    // Iterate backwards through the results list
+    for (result_set_t::reverse_iterator ii=result_set.rbegin(); ii!=result_set.rend(); ++ii)
+    {
+        WString scanName=WString((*ii).second.filename().generic_string());
+        int mode=MODE_NORMAL;
+        if ((*ii).second.extension()=="task_night")
+        {
+            mode=MODE_NIGHT;
+        }
+
+        taskLayout->addWidget(createQueuePanel(scanName, mode),Wt::AlignMiddle);
+        itemCount++;
+
+        // Only show max 100 entries to avoid slow speed.
+        if (itemCount>100)
+        {
+            break;
+        }
+    }
+
 }
 
 

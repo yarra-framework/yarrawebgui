@@ -162,6 +162,9 @@ void ywApplication::performLogout()
     root()->layout()->clear();
     statusPage=0;
     configPage=0;
+    queuePage=0;
+    logPage=0;
+    configPage=0;
 
     currentUser="None";
     currentLevel=1;
