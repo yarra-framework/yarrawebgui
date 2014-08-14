@@ -107,21 +107,28 @@ void ywApplication::performLogin()
     if (currentLevel==YW_USERLEVEL_ADMIN)
     {
         statusPage=ywStatusPage::createInstance(this);
-        leftMenu->addItem("Server Status", statusPage);
+        leftMenu->addItem("Server Status", statusPage)->triggered().connect(std::bind([=] () {
+                statusPage->refreshCurrentTab();
+        }));
     }
 
     queuePage=ywQueuePage::createInstance(this);
-    leftMenu->addItem("Task Queue", queuePage);
+    leftMenu->addItem("Task Queue", queuePage)->triggered().connect(std::bind([=] () {
+        queuePage->refreshLists();
+    }));
 
     if ((currentLevel==YW_USERLEVEL_ADMIN) || (currentLevel==YW_USERLEVEL_RESEARCHER))
     {
         logPage=ywLogPage::createInstance(this);
-        leftMenu->addItem("Log Archive", logPage);
+        leftMenu->addItem("Log Archive", logPage)->triggered().connect(std::bind([=] () {
+            logPage->refreshLogs();
+        }));
     }
 
     if (currentLevel==YW_USERLEVEL_ADMIN)
     {
         configPage=ywConfigPage::createInstance(this);
+        // TODO: Add connection to refresh of content
         leftMenu->addItem("Configuration", configPage);
     }
 

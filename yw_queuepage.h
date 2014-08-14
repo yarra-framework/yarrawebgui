@@ -25,7 +25,7 @@ public:
 
     void refreshFailList();
     void refreshQueueList();
-    void refresh();
+    void refreshLists();
     void tabChanged(int);
     void clearFailList();
     void clearQueueList();

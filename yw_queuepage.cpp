@@ -112,7 +112,7 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     button =new Wt::WPushButton("Refresh", innerBtnContainer);
     button->setStyleClass("btn");
     button->setMargin(2);
-    button->clicked().connect(this, &ywQueuePage::refresh);
+    button->clicked().connect(this, &ywQueuePage::refreshLists);
 
 
     queuePageLayout->addWidget(tabWidget,1);
@@ -124,11 +124,11 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     failtaskContainer->setMinimumSize(600,Wt::WLength::Auto);
     failtaskContainer->setMaximumSize(800,Wt::WLength::Auto);
 
-    refresh();
+    refreshLists();
 }
 
 
-void ywQueuePage::refresh()
+void ywQueuePage::refreshLists()
 {
     if (tabWidget->currentIndex()==0)
     {
@@ -313,6 +313,11 @@ void ywQueuePage::refreshFailList()
             break;
         }
     }
+
+    if (i==0)
+    {
+        failedLabel->setText("No failed tasks found.");
+    }
 }
 
 
@@ -330,54 +335,64 @@ void ywQueuePage::clearQueueList()
 
 void ywQueuePage::refreshQueueList()
 {
+    const string& ext_prio  =".task_prio";
+    const string& ext_normal=".task";
+    const string& ext_night =".task_night";
+
     taskLayout->clear();
     WTimer::singleShot(0, this, &ywQueuePage::clearFailList);
 
-    // Scheduled List
-    WText* processingLabel=new WText("Processing");
-    taskLayout->addWidget(processingLabel,Wt::Left);
+    namespace fs = boost::filesystem;
 
-    WPanel* procPanel=createQueuePanel("GRASP_LIVER#45453#1111", MODE_PROC);
-    taskLayout->addWidget(procPanel,Wt::AlignMiddle);
-    procPanel->setMargin(20, Wt::Bottom);
+    // ## Check the work dir
+    fs::path procDir(app->configuration->yarraWorkPath.toUTF8());
+    fs::directory_iterator work_iter;
 
+    WString procTaskName="";
+
+    try
+    {
+        if ( fs::exists(procDir) && fs::is_directory(procDir))
+        {
+            for( fs::directory_iterator dir_iter(procDir) ; dir_iter != work_iter ; ++dir_iter)
+            {
+                if ( (fs::is_regular_file(dir_iter->status())) &&
+                     ( (dir_iter->path().extension()==ext_prio) || (dir_iter->path().extension()==ext_normal) ||
+                       (dir_iter->path().extension()==ext_night) )
+                   )
+                {
+                    procTaskName=dir_iter->path().stem().generic_string();
+                    break;
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+    }
+
+    // Add item if a currently processed task has been found
+    if (!procTaskName.empty())
+    {
+        WPanel* procPanel=createQueuePanel(procTaskName, MODE_PROC);
+        WText* processingLabel=new WText("Processing");
+        taskLayout->addWidget(processingLabel,Wt::Left);
+        taskLayout->addWidget(procPanel,Wt::AlignMiddle);
+        procPanel->setMargin(20, Wt::Bottom);
+    }
+
+
+    // ## Now, check the queue dir
     WText* scheduledLabel=new WText("Scheduled Tasks");
     taskLayout->addWidget(scheduledLabel,Wt::Left);
-    /*
-    for (int i=0; i<10; i++)
-    {
-        int mode=MODE_NORMAL;
-        if (i==0)
-        {
-            mode=MODE_PRIO;
-        }
-        else
-        {
-            if (i>4)
-            {
-                mode=MODE_NIGHT;
-            }
-            else
-            {
-                mode=MODE_NORMAL;
-            }
-        }
-        taskLayout->addWidget(createQueuePanel(WString("GRASP_LIVER#45453#{1}").arg(i), mode),Wt::AlignMiddle);
-    }
-    */
 
-    namespace fs = boost::filesystem;
+    // First search for the ".task_prio" files in the queue dir
     fs::path queueDir(app->configuration->yarraQueuePath.toUTF8());
     fs::directory_iterator end_iter;
 
     typedef std::multimap<std::time_t,  boost::filesystem::path> result_set_t;
     result_set_t result_set;
 
-    const string& ext_prio  =".task_prio";
-    const string& ext_normal=".task";
-    const string& ext_night =".task_night";
-
-    // First search for the ".task_prio" files
     try
     {
         if ( fs::exists(queueDir) && fs::is_directory(queueDir))
@@ -397,9 +412,9 @@ void ywQueuePage::refreshQueueList()
 
     int itemCount=0;
     // Iterate backwards through the results list
-    for (result_set_t::reverse_iterator ii=result_set.rbegin(); ii!=result_set.rend(); ++ii)
+    for (result_set_t::iterator ii=result_set.begin(); ii!=result_set.end(); ++ii)
     {
-        WString scanName=WString((*ii).second.filename().generic_string());
+        WString scanName=WString((*ii).second.stem().generic_string());
         taskLayout->addWidget(createQueuePanel(scanName, MODE_PRIO),Wt::AlignMiddle);
         itemCount++;
 
@@ -410,7 +425,7 @@ void ywQueuePage::refreshQueueList()
         }
     }
 
-    // Now search for the ".task" and ".task_night" files
+    // Second, search for the ".task" and ".task_night" files
     result_set.clear();
 
     try
@@ -419,8 +434,8 @@ void ywQueuePage::refreshQueueList()
         {
             for( fs::directory_iterator dir_iter(queueDir) ; dir_iter != end_iter ; ++dir_iter)
             {
-                if ( (fs::is_regular_file(dir_iter->status()) &&
-                      ( (dir_iter->path().extension()==ext_normal)) || (dir_iter->path().extension()==ext_night) ))
+                if ( (fs::is_regular_file(dir_iter->status())) &&
+                      ( (dir_iter->path().extension()==ext_normal) || (dir_iter->path().extension()==ext_night) ))
                 {
                     result_set.insert(result_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
                 }
@@ -432,11 +447,11 @@ void ywQueuePage::refreshQueueList()
     }
 
     // Iterate backwards through the results list
-    for (result_set_t::reverse_iterator ii=result_set.rbegin(); ii!=result_set.rend(); ++ii)
+    for (result_set_t::iterator ii=result_set.begin(); ii!=result_set.end(); ++ii)
     {
-        WString scanName=WString((*ii).second.filename().generic_string());
+        WString scanName=WString((*ii).second.stem().generic_string());
         int mode=MODE_NORMAL;
-        if ((*ii).second.extension()=="task_night")
+        if ((*ii).second.extension()==ext_night)
         {
             mode=MODE_NIGHT;
         }
@@ -451,12 +466,23 @@ void ywQueuePage::refreshQueueList()
         }
     }
 
+    if (itemCount==0)
+    {
+        if (procTaskName.empty())
+        {
+            scheduledLabel->setText("No tasks scheduled currently.");
+        }
+        else
+        {
+            scheduledLabel->setText("No additional tasks scheduled.");
+        }
+    }
 }
 
 
 void ywQueuePage::tabChanged(int)
 {
-    refresh();
+    refreshLists();
 }
 
 
