@@ -230,6 +230,8 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
                 }));
             }
             popup->addSeparator();
+            popup->addItem("Change ACC / notification")->triggered().connect(std::bind([=] () {
+            }));
         }
 
         if (mode!=MODE_PROC)
@@ -253,7 +255,7 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
 void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int taskType)
 {
     // TODO
-    taskWidget->setText("Getting info for: " + taskName);
+    taskWidget->setText("More features coming soon!");
 }
 
 

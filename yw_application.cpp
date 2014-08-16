@@ -125,12 +125,14 @@ void ywApplication::performLogin()
         }));
     }
 
+    /* // TODO
     if (currentLevel==YW_USERLEVEL_ADMIN)
     {
         configPage=ywConfigPage::createInstance(this);
         // TODO: Add connection to refresh of content
         leftMenu->addItem("Configuration", configPage);
     }
+    */
 
     navbar->addMenu(leftMenu);
 
