@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     configurationInstance.loadConfiguration();
 
     // Prepare the arguments for calling the WRun commands
-    char arg1[] = "--docroot="".""";
+    char arg1[] = "--docroot=""html""";
     char arg2[] = "--http-address";
     char arg3[] = "0.0.0.0";
     char arg4[] = "--http-port";
