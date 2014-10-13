@@ -192,7 +192,7 @@ void ywApplication::showAbout()
         "<p>Developed by Kai Tobias Block (yarra@ktblock.de)</p>",
         Wt::Information, Wt::Ok);
 
-    messageBox->setModal(false);
+    messageBox->setModal(true);
 
     messageBox->buttonClicked().connect(std::bind([=] ()
     {

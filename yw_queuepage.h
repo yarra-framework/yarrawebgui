@@ -3,6 +3,7 @@
 
 #include <Wt/WContainerWidget>
 
+
 class ywApplication;
 
 using namespace Wt;
@@ -32,7 +33,12 @@ public:
 
     void updateTaskInformation(WString taskName, WText* taskWidget, int taskType);
 
-    void showInfo (WString taskName);
+    void showInfo (WString taskName, int mode);
+    void changePriority(WString taskName, int currentPriority, int newPriority);
+    void deleteTask(WString taskName, int mode);
+    void patchTask(WString taskName, int mode);
+    void restartTask(WString taskName, int mode);
+
 
     Wt::WVBoxLayout* failtaskLayout;
     Wt::WVBoxLayout* taskLayout;
@@ -41,7 +47,19 @@ public:
     WPanel* createQueuePanel(WString title, int mode);
 
     ywApplication* app;
+    WString queuePath;
+    WString failPath;
+
+
+    bool lockTask(WString taskName);
+    bool unlockTask(WString taskName);
+    bool isTaskLocked(WString taskName);
+
+    void showErrorMessage(WString errorMessage);
+    WString getFullTaskFileName(WString taskName, int mode);
+
 };
+
 
 
 #endif // YW_QUEUEPAGE_H

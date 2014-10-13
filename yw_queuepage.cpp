@@ -1,5 +1,6 @@
 #include "yw_queuepage.h"
 #include "yw_application.h"
+#include "yw_global.h"
 
 #include <Wt/WApplication>
 #include <Wt/WBreak>
@@ -7,6 +8,7 @@
 #include <Wt/WLineEdit>
 #include <Wt/WPushButton>
 #include <Wt/WText>
+#include <Wt/WLabel>
 #include <Wt/WNavigationBar>
 #include <Wt/WBootstrapTheme>
 #include <Wt/WStackedWidget>
@@ -28,12 +30,27 @@
 #include <Wt/WTimer>
 
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/exception/all.hpp>
+#include <boost/throw_exception.hpp>
+#include <boost/exception/error_info.hpp>
+
+#include <iostream>
+#include <fstream>
+
+
+namespace fs = boost::filesystem;
+
 
 
 ywQueuePage::ywQueuePage(ywApplication* parent)
  : WContainerWidget()
 {
     app=parent;
+    queuePath=app->configuration->yarraQueuePath;
+    failPath=app->configuration->yarraFailPath;
+
 
     // Page container
     Wt::WVBoxLayout* queuePageLayout = new Wt::WVBoxLayout();
@@ -203,40 +220,47 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
         Wt::WPopupMenu *popup = new Wt::WPopupMenu();
 
         popup->addItem("Info")->triggered().connect(std::bind([=] () {
-            showInfo(title);
+            showInfo(title,mode);
         }));
 
         if (mode==MODE_FAIL)
         {
             popup->addItem("Restart")->triggered().connect(std::bind([=] () {
+                restartTask(title, mode);
             }));
         }
+
         if ((mode!=MODE_PROC) && (mode!=MODE_FAIL))
         {
             popup->addSeparator();
             if (mode!=MODE_NORMAL)
             {
                 popup->addItem("Set mode to NORMAL")->triggered().connect(std::bind([=] () {
+                    changePriority(title, mode, MODE_NORMAL);
                 }));
             }
             if (mode!=MODE_PRIO)
             {
                 popup->addItem("Set mode to PRIORITY")->triggered().connect(std::bind([=] () {
+                    changePriority(title, mode, MODE_PRIO);
                 }));
             }
             if (mode!=MODE_NIGHT)
             {
-                popup->addItem("Set moode to NIGHT")->triggered().connect(std::bind([=] () {
+                popup->addItem("Set mode to NIGHT")->triggered().connect(std::bind([=] () {
+                    changePriority(title, mode, MODE_NIGHT);
                 }));
             }
             popup->addSeparator();
             popup->addItem("Change ACC / notification")->triggered().connect(std::bind([=] () {
+                patchTask(title, mode);
             }));
         }
 
         if (mode!=MODE_PROC)
         {
             popup->addItem("Delete")->triggered().connect(std::bind([=] () {
+                deleteTask(title, mode);
             }));
         }
 
@@ -254,15 +278,131 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
 
 void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int taskType)
 {
-    // TODO
-    taskWidget->setText("More features coming soon!");
+    WString infoText="";
+    WString fileName=getFullTaskFileName(taskName, taskType);
+
+    if (taskType==MODE_FAIL)
+    {
+        // TODO: Find type of task file (i.e. extension)
+    }
+
+    if (fs::exists(fileName.toUTF8()))
+    {
+        try
+        {
+            boost::property_tree::ptree taskfile;
+            boost::property_tree::ini_parser::read_ini(fileName.toUTF8(), taskfile);
+
+            infoText="<strong>Patient:</strong> " + WString::fromUTF8(taskfile.get<std::string>("Task.PatientName","Unknown"));
+            WString acc=WString::fromUTF8(taskfile.get<std::string>("Task.ACC",""));
+            if (!acc.empty())
+            {
+                infoText+="&nbsp;&nbsp; <strong>ACC#:</strong> "+acc;
+            }
+            infoText+="<br />";
+            infoText+="<strong>Mode:</strong> " + WString::fromUTF8(taskfile.get<std::string>("Task.ReconName","Unknown"));
+            WString paramValue=WString::fromUTF8(taskfile.get<std::string>("Task.ParamValue",""));
+            if (paramValue!="0")
+            {
+                infoText+="&nbsp;&nbsp; <strong>Parameter:</strong> "+paramValue;
+            }
+        }
+        catch(const boost::property_tree::ptree_error &e)
+        {
+            infoText="Error reading task information";
+        }
+    }
+    else
+    {
+        infoText="Error finding task information";
+    }
+
+
+    taskWidget->setText(infoText);
 }
 
 
-void ywQueuePage::showInfo (WString taskName)
+void ywQueuePage::showInfo (WString taskName, int mode)
 {
-    Wt::WMessageBox::show("Selected Case",
-                          "The selected case is: " + taskName, Wt::Ok);
+    WString infoText="";
+    WString fileName=getFullTaskFileName(taskName, mode);
+
+    if (mode==MODE_FAIL)
+    {
+        // TODO: Find type of task file (i.e. extension)
+    }
+
+    if (fs::exists(fileName.toUTF8()))
+    {
+        try
+        {
+            boost::property_tree::ptree taskfile;
+            boost::property_tree::ini_parser::read_ini(fileName.toUTF8(), taskfile);
+
+            infoText="<strong>Patient:</strong> " + WString::fromUTF8(taskfile.get<std::string>("Task.PatientName","Unknown"));
+
+            WString acc=WString::fromUTF8(taskfile.get<std::string>("Task.ACC",""));
+            if (!acc.empty())
+            {
+                infoText+="<br /><strong>ACC#:</strong> "+acc;
+            }
+
+            infoText+="<br /><strong>Protocol:</strong> "+WString::fromUTF8(taskfile.get<std::string>("Task.ScanProtocol","0"));
+            infoText+="<br />";
+            infoText+="<br /><strong>Mode:</strong> " + WString::fromUTF8(taskfile.get<std::string>("Task.ReconName","Unknown"));
+            infoText+="<br /><strong>Parameter:</strong> " + WString::fromUTF8(taskfile.get<std::string>("Task.ParamValue","0"));
+            infoText+="<br /><strong>Notifications:</strong> "+WString::fromUTF8(taskfile.get<std::string>("Task.EMailNotification",""));
+            infoText+="<br />";
+            infoText+="<br /><strong>System:</strong> "+WString::fromUTF8(taskfile.get<std::string>("Information.SystemName",""));
+            infoText+="<br /><strong>Submitted:</strong> "+WString::fromUTF8(taskfile.get<std::string>("Information.TaskDate","")) + "&nbsp;&nbsp;" +
+                                                                                WString::fromUTF8(taskfile.get<std::string>("Information.TaskTime",""));
+            WString scanSizeStr="";
+            int scanSize=taskfile.get<int>("Information.ScanFileSize",0)/(1024*1024);
+            if (scanSize<1024)
+            {
+                scanSizeStr=WString("{1} MB").arg(scanSize);
+            }
+            else
+            {
+                scanSize=scanSize/1024;
+                scanSizeStr=WString("{1} GB").arg(scanSize);
+            }
+
+            infoText+="<br /><strong>Scan Size:</strong> ~"+scanSizeStr;
+            infoText+="<br />";
+
+        }
+        catch(const boost::property_tree::ptree_error &e)
+        {
+            infoText="Error reading task information";
+        }
+    }
+    else
+    {
+        infoText="Error finding task information";
+    }
+
+
+    Wt::WDialog *dialog = new Wt::WDialog("Task Information");
+
+    Wt::WText* textWidget=new Wt::WText();
+    Wt::WScrollArea* textScroll =new Wt::WScrollArea(dialog->contents());
+    textScroll->setWidget(textWidget);
+    textWidget->setWordWrap(false);
+    textWidget->setText(infoText);
+
+    Wt::WPushButton *ok = new Wt::WPushButton("OK", dialog->footer());
+    ok->setDefault(true);
+
+    ok->clicked().connect(std::bind([=] () {
+       delete dialog;
+    }));
+
+    dialog->resize(600,440);
+    dialog->refresh();
+    dialog->setResizable(true);
+    dialog->setModal(true);
+    dialog->show();
 }
 
 
@@ -277,7 +417,6 @@ void ywQueuePage::refreshFailList()
 
 
     // Read log directory, except yarra.log
-    namespace fs = boost::filesystem;
     fs::path failDir(app->configuration->yarraFailPath.toUTF8());
     fs::directory_iterator end_iter;
 
@@ -335,11 +474,12 @@ void ywQueuePage::clearQueueList()
 }
 
 
+
 void ywQueuePage::refreshQueueList()
 {
-    const string& ext_prio  =".task_prio";
-    const string& ext_normal=".task";
-    const string& ext_night =".task_night";
+    const string& ext_prio  =YW_EXT_TASKPRIO;
+    const string& ext_normal=YW_EXT_TASK;
+    const string& ext_night =YW_EXT_TASKNIGHT;
 
     taskLayout->clear();
     WTimer::singleShot(0, this, &ywQueuePage::clearFailList);
@@ -492,3 +632,165 @@ ywQueuePage* ywQueuePage::createInstance(ywApplication* parent)
 {
     return new ywQueuePage(parent);
 }
+
+
+WString ywQueuePage::getFullTaskFileName(WString taskName, int mode)
+{
+    switch (mode)
+    {
+    case MODE_NORMAL:
+    default:
+        return queuePath+"/"+taskName+YW_EXT_TASK;
+        break;
+    case MODE_PRIO:
+        return queuePath+"/"+taskName+YW_EXT_TASKPRIO;
+        break;
+    case MODE_NIGHT:
+        return queuePath+"/"+taskName+YW_EXT_TASKNIGHT;
+        break;
+    case MODE_FAIL:
+        return failPath+"/"+taskName;
+        break;
+    }
+}
+
+
+void ywQueuePage::changePriority(WString taskName, int currentPriority, int newPriority)
+{
+    WString errorMessage="";
+
+    // Create lock file
+    if (!lockTask(taskName))
+    {
+        errorMessage="Could not lock task. Possibly, the task is currently modified by another user.";
+        showErrorMessage(errorMessage);
+        return;
+    }
+
+    // Rename the current task file
+    WString currentName=getFullTaskFileName(taskName, currentPriority);
+    WString newName=getFullTaskFileName(taskName, newPriority);
+
+    try
+    {
+        fs::rename(currentName.toUTF8(),newName.toUTF8());
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        errorMessage="Error changing task file.";
+        showErrorMessage(errorMessage);
+    }
+
+    // Remove lock file
+    if (!unlockTask(taskName))
+    {
+        errorMessage="Could not remove lock file. Please contact the administrator.";
+        showErrorMessage(errorMessage);
+        return;
+    }
+
+    // Launch timer in 1 sec and update status
+    WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+}
+
+
+
+void ywQueuePage::deleteTask(WString taskName, int mode)
+{
+    Wt::WMessageBox::show("Coming soon!", "<p>Not implemented yet.</p>", Wt::Ok);
+
+    if (mode==MODE_FAIL)
+    {
+        // Failed tasks need to be handled differently
+    }
+    else
+    {
+
+    }
+}
+
+
+void ywQueuePage::patchTask(WString taskName, int mode)
+{
+    Wt::WMessageBox::show("Coming soon!", "<p>Not implemented yet.</p>", Wt::Ok);
+}
+
+
+void ywQueuePage::restartTask(WString taskName, int mode)
+{
+    Wt::WMessageBox::show("Coming soon!", "<p>Not implemented yet.</p>", Wt::Ok);
+}
+
+
+bool ywQueuePage::isTaskLocked(WString taskName)
+{
+    WString fullName=queuePath+"/"+taskName+YW_EXT_LOCK;
+
+    if (fs::exists(fullName.toUTF8()))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+bool ywQueuePage::lockTask(WString taskName)
+{
+    WString fullName=queuePath+"/"+taskName+YW_EXT_LOCK;
+
+    // File already locked
+    if (fs::exists(fullName.toUTF8()))
+    {
+        return false;
+    }
+
+    std::ofstream lockfile(fullName.toUTF8());
+    lockfile << "LOCK" << std::endl;
+    lockfile.close();
+
+    return true;
+}
+
+
+bool ywQueuePage::unlockTask(WString taskName)
+{
+    WString fullName=queuePath+"/"+taskName+YW_EXT_LOCK;
+
+    bool result=false;
+
+    try
+    {
+        if (!fs::exists(fullName.toUTF8()))
+        {
+            return true;
+        }
+
+        result=(fs::remove(fullName.toUTF8()));
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        result=false;
+    }
+
+    return result;
+}
+
+
+void ywQueuePage::showErrorMessage(WString errorMessage)
+{
+    Wt::WMessageBox *messageBox = new Wt::WMessageBox
+       ("Error",
+        "<p>Unfortunately, the operation failed due to the following reason:</p>"
+        "<p>"+errorMessage+"</p>",
+        Wt::Critical, Wt::Ok);
+
+    messageBox->setModal(true);
+    messageBox->buttonClicked().connect(std::bind([=] () {
+        delete messageBox;
+        WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+    }));
+    messageBox->show();
+}
+
+
