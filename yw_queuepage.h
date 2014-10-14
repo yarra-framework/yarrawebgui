@@ -2,6 +2,7 @@
 #define YW_QUEUEPAGE_H
 
 #include <Wt/WContainerWidget>
+#include "yw_global.h"
 
 
 class ywApplication;
@@ -49,6 +50,7 @@ public:
     ywApplication* app;
     WString queuePath;
     WString failPath;
+    WString workPath;
 
 
     bool lockTask(WString taskName);
@@ -57,6 +59,11 @@ public:
 
     void showErrorMessage(WString errorMessage);
     WString getFullTaskFileName(WString taskName, int mode);
+    WString getTaskFileName(WString taskName, int mode);
+    WString getFailTaskFile(WString taskName);
+    WString getWorkTaskFile();
+
+    bool getAllFilesOfTask(WString taskFileName, WStringList& fileList);
 
 };
 

@@ -1,6 +1,5 @@
 #include "yw_queuepage.h"
 #include "yw_application.h"
-#include "yw_global.h"
 
 #include <Wt/WApplication>
 #include <Wt/WBreak>
@@ -50,6 +49,7 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     app=parent;
     queuePath=app->configuration->yarraQueuePath;
     failPath=app->configuration->yarraFailPath;
+    workPath=app->configuration->yarraWorkPath;
 
 
     // Page container
@@ -141,6 +141,18 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     failtaskContainer->setMinimumSize(600,Wt::WLength::Auto);
     failtaskContainer->setMaximumSize(800,Wt::WLength::Auto);
 
+    refreshLists();
+}
+
+
+ywQueuePage* ywQueuePage::createInstance(ywApplication* parent)
+{
+    return new ywQueuePage(parent);
+}
+
+
+void ywQueuePage::tabChanged(int)
+{
     refreshLists();
 }
 
@@ -283,8 +295,16 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
 
     if (taskType==MODE_FAIL)
     {
-        // TODO: Find type of task file (i.e. extension)
+        // Find the full name of the task file (which might be .task, .task_prio, .task_night)
+        fileName=getFailTaskFile(fileName);
     }
+
+    if (taskType==MODE_PROC)
+    {
+        // Find the full name of the task file in the work directory (which can be .task, .task_prio, .task_night)
+        fileName=getWorkTaskFile();
+    }
+
 
     if (fs::exists(fileName.toUTF8()))
     {
@@ -322,6 +342,81 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
 }
 
 
+
+WString ywQueuePage::getFailTaskFile(WString taskName)
+{
+    const string& ext_prio  =YW_EXT_TASKPRIO;
+    const string& ext_normal=YW_EXT_TASK;
+    const string& ext_night =YW_EXT_TASKNIGHT;
+
+    fs::path failDir(taskName.toUTF8());
+    fs::directory_iterator fail_iter;
+
+    WString failTaskName="";
+
+    try
+    {
+        if ( fs::exists(failDir) && fs::is_directory(failDir))
+        {
+            for( fs::directory_iterator dir_iter(failDir) ; dir_iter != fail_iter ; ++dir_iter)
+            {
+                if ( (fs::is_regular_file(dir_iter->status())) &&
+                     ( (dir_iter->path().extension()==ext_prio) || (dir_iter->path().extension()==ext_normal) ||
+                       (dir_iter->path().extension()==ext_night) )
+                   )
+                {
+                    failTaskName=dir_iter->path().generic_string();
+                    break;
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        failTaskName="";
+    }
+
+    return failTaskName;
+}
+
+
+WString ywQueuePage::getWorkTaskFile()
+{
+    const string& ext_prio  =YW_EXT_TASKPRIO;
+    const string& ext_normal=YW_EXT_TASK;
+    const string& ext_night =YW_EXT_TASKNIGHT;
+
+    fs::path workDir(workPath.toUTF8());
+    fs::directory_iterator work_iter;
+
+    WString workTaskName="";
+
+    try
+    {
+        if ( fs::exists(workDir) && fs::is_directory(workDir))
+        {
+            for( fs::directory_iterator dir_iter(workDir) ; dir_iter != work_iter ; ++dir_iter)
+            {
+                if ( (fs::is_regular_file(dir_iter->status())) &&
+                     ( (dir_iter->path().extension()==ext_prio) || (dir_iter->path().extension()==ext_normal) ||
+                       (dir_iter->path().extension()==ext_night) )
+                   )
+                {
+                    workTaskName=dir_iter->path().generic_string();
+                    break;
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        workTaskName="";
+    }
+
+    return workTaskName;
+}
+
+
 void ywQueuePage::showInfo (WString taskName, int mode)
 {
     WString infoText="";
@@ -329,7 +424,8 @@ void ywQueuePage::showInfo (WString taskName, int mode)
 
     if (mode==MODE_FAIL)
     {
-        // TODO: Find type of task file (i.e. extension)
+        // Find the full name of the task file (which might be .task, .task_prio, .task_night)
+        fileName=getFailTaskFile(fileName);
     }
 
     if (fs::exists(fileName.toUTF8()))
@@ -472,7 +568,6 @@ void ywQueuePage::clearQueueList()
 {
     taskLayout->clear();
 }
-
 
 
 void ywQueuePage::refreshQueueList()
@@ -622,18 +717,6 @@ void ywQueuePage::refreshQueueList()
 }
 
 
-void ywQueuePage::tabChanged(int)
-{
-    refreshLists();
-}
-
-
-ywQueuePage* ywQueuePage::createInstance(ywApplication* parent)
-{
-    return new ywQueuePage(parent);
-}
-
-
 WString ywQueuePage::getFullTaskFileName(WString taskName, int mode)
 {
     switch (mode)
@@ -650,6 +733,30 @@ WString ywQueuePage::getFullTaskFileName(WString taskName, int mode)
         break;
     case MODE_FAIL:
         return failPath+"/"+taskName;
+        break;
+    case MODE_PROC:
+        return workPath;
+    }
+}
+
+
+WString ywQueuePage::getTaskFileName(WString taskName, int mode)
+{
+    switch (mode)
+    {
+    case MODE_NORMAL:
+    default:
+        return taskName+YW_EXT_TASK;
+        break;
+    case MODE_PRIO:
+        return taskName+YW_EXT_TASKPRIO;
+        break;
+    case MODE_NIGHT:
+        return taskName+YW_EXT_TASKNIGHT;
+        break;
+    case MODE_FAIL:
+    case MODE_PROC:
+        return taskName;
         break;
     }
 }
@@ -689,7 +796,7 @@ void ywQueuePage::changePriority(WString taskName, int currentPriority, int newP
         return;
     }
 
-    // Launch timer in 1 sec and update status
+    // Launch timer in 100 msec and update status
     WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
 }
 
@@ -697,16 +804,198 @@ void ywQueuePage::changePriority(WString taskName, int currentPriority, int newP
 
 void ywQueuePage::deleteTask(WString taskName, int mode)
 {
-    Wt::WMessageBox::show("Coming soon!", "<p>Not implemented yet.</p>", Wt::Ok);
-
     if (mode==MODE_FAIL)
     {
-        // Failed tasks need to be handled differently
+        Wt::WMessageBox box1("Delete Task","<p>Are you sure to delete this task?</p>\
+                             <p><strong>Warning:</strong> The data will be lost permanently.</p>", Wt::Question, Wt::No | Wt::Yes);
+        box1.setDefaultButton(Wt::No);
+        box1.buttonClicked().connect(&box1, &WMessageBox::accept);
+        box1.exec();
+
+        if (box1.buttonResult()==Wt::Yes)
+        {
+            // For failed tasks, we only need to delete all file in the task directory
+            // and finally delete the task directory
+
+            WString taskPath=getFullTaskFileName(taskName, MODE_FAIL);
+
+            fs::path taskDir(taskPath.toUTF8());
+            fs::directory_iterator end_iter;
+
+            // The multimap should be replaced with a normal STL vector here
+            typedef std::multimap<int, boost::filesystem::path> result_set_t;
+            result_set_t result_set;
+
+            // Get a list of all files in the task directory
+            try
+            {
+                if ( fs::exists(taskDir) && fs::is_directory(taskDir))
+                {
+                    for( fs::directory_iterator dir_iter(taskDir) ; dir_iter != end_iter ; ++dir_iter)
+                    {
+                        if (fs::is_regular_file(dir_iter->status()))
+                        {
+                            result_set.insert(result_set_t::value_type(0,*dir_iter));
+                        }
+                    }
+                }
+            }
+            catch(const boost::filesystem::filesystem_error& e)
+            {
+            }
+
+            bool deleteError=false;
+
+            // First check if there is any file already existing in the queue directory
+            for (result_set_t::iterator ii=result_set.begin(); ii!=result_set.end(); ++ii)
+            {
+                WString deleteFile=taskPath+"/"+WString((*ii).second.filename().generic_string());
+
+                try
+                {
+                    fs::remove(deleteFile.toUTF8());
+                }
+                catch(const boost::filesystem::filesystem_error& e)
+                {
+                    deleteError=true;
+                }
+            }
+
+            if (deleteError)
+            {
+                showErrorMessage("Error deleting task files.");
+            }
+            else
+            {
+                // Now, remove the empty directory
+                try
+                {
+                    fs::remove(taskPath.toUTF8());
+                }
+                catch(const boost::filesystem::filesystem_error& e)
+                {
+                    showErrorMessage("Error removing empty task directory.");
+                }
+            }
+
+            // Launch timer in 100 msec and update status
+            WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+        }
     }
     else
     {
+        Wt::WMessageBox box1("Delete Task","<p>Are you sure to delete this task?</p>", Wt::Question, Wt::No | Wt::Yes);
+        box1.setDefaultButton(Wt::No);
+        box1.buttonClicked().connect(&box1, &WMessageBox::accept);
+        box1.exec();
 
+        if (box1.buttonResult()==Wt::Yes)
+        {
+            Wt::WMessageBox box2("Move to Fail List?","<p>Do you want to keep the task in the fail list?</p>\
+                                 <p><strong>Warning:</strong> Without moving the task to the fail list, the data will be lost permanently.</p>",
+                                 Wt::Question, Wt::Yes | Wt::No | Wt::Cancel);
+            box2.setDefaultButton(Wt::Cancel);
+            box2.buttonClicked().connect(&box2, &WMessageBox::accept);
+            box2.exec();
+
+            if (box2.buttonResult()==Wt::Yes)
+            {
+                // NOTE: Check if a folder with the case already exists. If so, add time stamp
+                //       according to Yarra UID scheme
+
+                // TODO: Create folder in fail directory and move files there
+
+                // Launch timer in 100 msec and update status
+                WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+            }
+            if (box2.buttonResult()==Wt::No)
+            {
+                // Just Delete data files in queue directory without
+
+                // First, create a lockfile in the queue directory
+                if (!lockTask(taskName))
+                {
+                    showErrorMessage("Locking the task not possible.");
+                    return;
+                }
+
+                // Create list of all files belonging to the task
+                WStringList fileList;
+                WString taskFileName=getFullTaskFileName(taskName, mode);
+                fileList.push_back(getTaskFileName(taskName, mode));
+                getAllFilesOfTask(taskFileName, fileList);
+
+                bool deleteError=false;
+                for (int i=0; i<fileList.size(); i++)
+                {
+                    WString currentFile=queuePath+"/"+fileList.at(i);
+                    try
+                    {
+                        fs::remove(currentFile.toUTF8());
+                    }
+                    catch(const boost::filesystem::filesystem_error& e)
+                    {
+                        deleteError=true;
+                    }
+                }
+                if (deleteError)
+                {
+                    showErrorMessage("Error deleting task files from queue.");
+                }
+
+                unlockTask(taskName);
+
+                // Launch timer in 100 msec and update status
+                WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+            }
+        }
     }
+}
+
+
+bool ywQueuePage::getAllFilesOfTask(WString taskFileName, WStringList& fileList)
+{
+    if (!fs::exists(taskFileName.toUTF8()))
+    {
+        return false;
+    }
+
+    try
+    {
+        boost::property_tree::ptree taskfile;
+        boost::property_tree::ini_parser::read_ini(taskFileName.toUTF8(), taskfile);
+
+        WString scanFile=WString::fromUTF8(taskfile.get<std::string>("Task.ScanFile",""));
+        if (scanFile.empty())
+        {
+            // There always needs to be a scanfile. Otherwise, the task was invalid
+            return false;
+        }
+        fileList.push_back(scanFile);
+
+        int adjustmentFilesCount=taskfile.get<int>("Task.AdjustmentFilesCount",0);
+
+        // Prevent unplausible settings
+        if ((adjustmentFilesCount<0) || (adjustmentFilesCount>99))
+        {
+            adjustmentFilesCount=0;
+        }
+
+        for (int i=0; i< adjustmentFilesCount; i++)
+        {
+            WString currFile=WString::fromUTF8(taskfile.get<std::string>(WString("AdjustmentFiles.{1}").arg(i).toUTF8(),""));
+            if (!currFile.empty())
+            {
+                fileList.push_back(currFile);
+            }
+        }
+    }
+    catch(const boost::property_tree::ptree_error &e)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -717,8 +1006,110 @@ void ywQueuePage::patchTask(WString taskName, int mode)
 
 
 void ywQueuePage::restartTask(WString taskName, int mode)
-{
-    Wt::WMessageBox::show("Coming soon!", "<p>Not implemented yet.</p>", Wt::Ok);
+{   
+    Wt::WMessageBox box1("Restart Task","<p>Are you sure to move the task back to the task queue?</p>", Wt::Question, Wt::No | Wt::Yes);
+    box1.setDefaultButton(Wt::No);
+    box1.buttonClicked().connect(&box1, &WMessageBox::accept);
+    box1.exec();
+
+    if (box1.buttonResult()==Wt::Yes)
+    {
+        WString taskPath=getFullTaskFileName(taskName, MODE_FAIL);
+
+        fs::path taskDir(taskPath.toUTF8());
+        fs::directory_iterator end_iter;
+
+        typedef std::multimap<int, boost::filesystem::path> result_set_t;
+        result_set_t result_set;
+
+        try
+        {
+            if ( fs::exists(taskDir) && fs::is_directory(taskDir))
+            {
+                for( fs::directory_iterator dir_iter(taskDir) ; dir_iter != end_iter ; ++dir_iter)
+                {
+                    if (fs::is_regular_file(dir_iter->status()))
+                    {
+                        result_set.insert(result_set_t::value_type(0,*dir_iter));
+                    }
+                }
+            }
+        }
+        catch(const boost::filesystem::filesystem_error& e)
+        {
+        }
+
+
+        bool existingFile=false;
+
+        // First check if there is any file already existing in the queue directory
+        for (result_set_t::iterator ii=result_set.begin(); ii!=result_set.end(); ++ii)
+        {
+            WString scanName=queuePath+"/"+WString((*ii).second.filename().generic_string());
+
+            if (fs::exists(scanName.toUTF8()))
+            {
+                existingFile=true;
+                break;
+            }
+        }
+
+        if (existingFile)
+        {
+            showErrorMessage("Some of the task files already exist in the queue directory.");
+            return;
+        }
+
+        // First, create a lockfile in the queue directory
+        if (!lockTask(taskName))
+        {
+            showErrorMessage("Locking the task not possible.");
+            return;
+        }
+
+        bool copyError=false;
+
+        WString test="";
+
+        // First check if there is any file already existing in the queue directory
+        for (result_set_t::iterator ii=result_set.begin(); ii!=result_set.end(); ++ii)
+        {
+            WString copyFile=WString((*ii).second.filename().generic_string());
+            WString sourceFile=taskPath+"/"+copyFile;
+            WString targetFile=queuePath+"/"+copyFile;
+
+            try
+            {
+                fs::rename(sourceFile.toUTF8(),targetFile.toUTF8());
+            }
+            catch(const boost::filesystem::filesystem_error& e)
+            {
+                copyError=true;
+            }
+        }
+
+        if (copyError)
+        {
+            showErrorMessage("Error moving task files.");
+        }
+        else
+        {
+            // Now, remove the empty directory
+            try
+            {
+                fs::remove(taskPath.toUTF8());
+            }
+            catch(const boost::filesystem::filesystem_error& e)
+            {
+                showErrorMessage("Error removing empty task directory.");
+            }
+        }
+
+        unlockTask(taskName);
+
+        // Launch timer in 100 msec and update status
+        WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+    }
 }
 
 

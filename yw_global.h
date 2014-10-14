@@ -12,5 +12,11 @@
 
 #define YW_EXT_LOCK      ".lock"
 
+#include <Wt/WString>
+
+// String list, as used at various places in the code
+typedef std::vector<Wt::WString> WStringList;
+
+
 #endif // YW_GLOBAL_H
 
