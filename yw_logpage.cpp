@@ -249,6 +249,7 @@ void ywLogPage::showLog(int index)
             {
                 widgetText+=WString::fromUTF8(line)+"\n";
             }
+            logfile.close();
         }
     }
 

@@ -214,6 +214,7 @@ void ywStatusPage::refreshServerLog()
         {
             widgetText+=WString::fromUTF8(line)+"\n";
         }
+        logfile.close();
     }
 
     serverLogWidget->setText(widgetText);
@@ -245,6 +246,7 @@ void ywStatusPage::refreshTaskLog()
             {
                 widgetText+=WString::fromUTF8(line)+"\n";
             }
+            logfile.close();
         }
     }
 
