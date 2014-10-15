@@ -43,6 +43,9 @@ public:
     void patchTask(WString taskName, int mode);
     void doPatchTask(WString taskName, int mode, WString newACC, WString newNotifications);
 
+    void editTaskFile(WString taskName, int mode);
+    void doEditTask(WString taskName, int mode, WString newContent);
+
     Wt::WVBoxLayout* failtaskLayout;
     Wt::WVBoxLayout* taskLayout;
     Wt::WTabWidget*  tabWidget;
@@ -53,7 +56,6 @@ public:
     WString queuePath;
     WString failPath;
     WString workPath;
-
 
     bool lockTask(WString taskName);
     bool unlockTask(WString taskName);

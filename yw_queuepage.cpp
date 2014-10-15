@@ -239,7 +239,8 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
         }));
 
         if (mode==MODE_FAIL)
-        {
+        {            
+            popup->addSeparator();
             popup->addItem("Restart")->triggered().connect(std::bind([=] () {
                 restartTask(title, mode);
             }));
@@ -280,14 +281,20 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
             popup->addItem("Delete")->triggered().connect(std::bind([=] () {
                 deleteTask(title, mode);
             }));
+            if (app->currentLevel==ywApplication::YW_USERLEVEL_ADMIN)
+            {
+                popup->addSeparator();
+                popup->addItem("Edit task file")->triggered().connect(std::bind([=] () {
+                    editTaskFile(title, mode);
+                }));
+            }
+
         }
 
         WPushButton* button = new Wt::WPushButton("Edit");
         button->setMenu(popup);
         button->addStyleClass("btn btn-primary btn-xs");
         btnLayout->addWidget(button,0, Wt::AlignLeft);
-
-        //btnLayout->addWidget(new WContainerWidget,1);
     }
 
     return panel;
@@ -1139,10 +1146,10 @@ void ywQueuePage::patchTask(WString taskName, int mode)
     Wt::WDialog *patchDialog = new Wt::WDialog("Modify Task");
 
     Wt::WPushButton *ok = new Wt::WPushButton("OK", patchDialog->footer());
-    ok->setDefault(false);
+    ok->setDefault(true);
 
     Wt::WPushButton *cancel = new Wt::WPushButton("Cancel", patchDialog->footer());
-    cancel->setDefault(true);
+    cancel->setDefault(false);
     cancel->clicked().connect(patchDialog, &Wt::WDialog::reject);
 
     Wt::WLabel *accLabel = new Wt::WLabel("ACC#:", patchDialog->contents());
@@ -1150,7 +1157,7 @@ void ywQueuePage::patchTask(WString taskName, int mode)
     accLabel->setBuddy(accEdit);
     accEdit->setText(accValue);
 
-    Wt::WRegExpValidator *accValidator=new Wt::WRegExpValidator("[0-9]{0,12}");
+    Wt::WRegExpValidator *accValidator=new Wt::WRegExpValidator("[0-9]{0,16}");
     accValidator->setMandatory(true);
     accEdit->setValidator(accValidator);
 
@@ -1410,7 +1417,7 @@ void ywQueuePage::restartTask(WString taskName, int mode)
 
 bool ywQueuePage::isTaskLocked(WString taskName)
 {
-    WString fullName=queuePath+"/"+taskName+YW_EXT_LOCK;
+    WString fullName=queuePath+"/"+taskName+YW_EXT_LOCK;   
 
     if (fs::exists(fullName.toUTF8()))
     {
@@ -1477,6 +1484,126 @@ void ywQueuePage::showErrorMessage(WString errorMessage)
         WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
     }));
     messageBox->show();
+}
+
+
+void ywQueuePage::editTaskFile(WString taskName, int mode)
+{
+    WString fileName=getFullTaskFileName(taskName, mode);
+
+    if (mode==MODE_FAIL)
+    {
+        // Find the full name of the task file (which might be .task, .task_prio, .task_night)
+        fileName=getFailTaskFile(fileName);
+    }
+
+    if (!fs::exists(fileName.toUTF8()))
+    {
+        showErrorMessage("Error finding task information");
+        return;
+    }
+
+    // Read the task file into a WString
+    std::string line;
+    std::ifstream taskfile(fileName.toUTF8());
+    WString taskContent="";
+
+    if(!taskfile)
+    {
+        showErrorMessage("Unable to read task file");
+        return;
+    }
+    else
+    {
+        while (std::getline(taskfile, line))
+        {
+            taskContent+=WString::fromUTF8(line)+"\n";
+        }
+    }
+    taskfile.close();
+
+    Wt::WDialog *editDialog = new Wt::WDialog("Edit Task File");
+
+    Wt::WPushButton *save = new Wt::WPushButton("Save", editDialog->footer());
+    save->setDefault(false);
+    save->clicked().connect(editDialog, &Wt::WDialog::accept);
+
+    Wt::WPushButton *cancel = new Wt::WPushButton("Cancel", editDialog->footer());
+    cancel->setDefault(false);
+    cancel->clicked().connect(editDialog, &Wt::WDialog::reject);
+
+    Wt::WVBoxLayout* contentLayout=new Wt::WVBoxLayout();
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+
+    Wt::WTextArea *editor = new Wt::WTextArea();
+    editor->setText(taskContent);
+    contentLayout->insertWidget(0,editor);
+
+    editDialog->contents()->setLayout(contentLayout);
+
+    editDialog->rejectWhenEscapePressed();
+    editDialog->setModal(true);
+    editDialog->setResizable(true);
+
+    // Process the dialog result.
+    editDialog->finished().connect(std::bind([=] () {
+        if (editDialog->result()==Wt::WDialog::Accepted)
+        {
+            // Call subfunction to write the changes
+            doEditTask(taskName, mode, editor->text());
+        }
+        delete editDialog;
+    }));
+
+    editDialog->resize(700,500);
+    editDialog->refresh();
+    editDialog->show();
+}
+
+
+void ywQueuePage::doEditTask(WString taskName, int mode, WString newContent)
+{
+    WString fileName=getFullTaskFileName(taskName, mode);
+
+    if (mode==MODE_FAIL)
+    {
+        // Find the full name of the task file (which might be .task, .task_prio, .task_night)
+        fileName=getFailTaskFile(fileName);
+    }
+
+    if (!fs::exists(fileName.toUTF8()))
+    {
+        showErrorMessage("Cannot find task information anymore.");
+        return;
+    }
+
+    // TODO: Implement lock mechanism for file in fail directory
+    //       via generic lock mechanism (for any file)
+    if (mode!=MODE_FAIL)
+    {
+        // First, create a lockfile in the queue directory
+        if (!lockTask(taskName))
+        {
+            showErrorMessage("Locking the task not possible.");
+            return;
+        }
+    }
+
+    // Write the content to the file
+    std::ofstream taskFile(fileName.toUTF8(), std::ofstream::out | std::ofstream::trunc);
+    taskFile << newContent.toUTF8();
+    taskFile.flush();
+    taskFile.close();
+
+    // TODO: Implement lock mechanism for file in fail directory
+    //       via generic lock mechanism (for any file)
+    if (mode!=MODE_FAIL)
+    {
+        unlockTask(taskName);
+    }
+
+    // Launch timer in 100 msec and update status
+    WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
 }
 
 
