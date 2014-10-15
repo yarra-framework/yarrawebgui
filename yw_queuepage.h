@@ -37,9 +37,11 @@ public:
     void showInfo (WString taskName, int mode);
     void changePriority(WString taskName, int currentPriority, int newPriority);
     void deleteTask(WString taskName, int mode);
-    void patchTask(WString taskName, int mode);
     void restartTask(WString taskName, int mode);
+    void pushbackTask(WString taskName, int mode);
 
+    void patchTask(WString taskName, int mode);
+    void doPatchTask(WString taskName, int mode, WString newACC, WString newNotifications);
 
     Wt::WVBoxLayout* failtaskLayout;
     Wt::WVBoxLayout* taskLayout;

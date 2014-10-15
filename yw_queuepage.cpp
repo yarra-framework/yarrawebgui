@@ -27,6 +27,7 @@
 #include <Wt/WText>
 #include <Wt/WScrollArea>
 #include <Wt/WTimer>
+#include <Wt/WRegExpValidator>
 
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -37,6 +38,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <ctime>
+#include <time.h>
 
 
 namespace fs = boost::filesystem;
@@ -263,6 +266,9 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
                     changePriority(title, mode, MODE_NIGHT);
                 }));
             }
+            popup->addItem("Push back")->triggered().connect(std::bind([=] () {
+                pushbackTask(title, mode);
+            }));
             popup->addSeparator();
             popup->addItem("Change ACC / notification")->triggered().connect(std::bind([=] () {
                 patchTask(title, mode);
@@ -894,16 +900,100 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
             Wt::WMessageBox box2("Move to Fail List?","<p>Do you want to keep the task in the fail list?</p>\
                                  <p><strong>Warning:</strong> Without moving the task to the fail list, the data will be lost permanently.</p>",
                                  Wt::Question, Wt::Yes | Wt::No | Wt::Cancel);
-            box2.setDefaultButton(Wt::Cancel);
+            box2.setDefaultButton(Wt::Yes);
             box2.buttonClicked().connect(&box2, &WMessageBox::accept);
             box2.exec();
 
             if (box2.buttonResult()==Wt::Yes)
             {
+                // Create folder in fail directory and move files there
+
+                // First, create a lockfile in the queue directory
+                if (!lockTask(taskName))
+                {
+                    showErrorMessage("Locking the task not possible.");
+                    return;
+                }
+
                 // NOTE: Check if a folder with the case already exists. If so, add time stamp
                 //       according to Yarra UID scheme
 
-                // TODO: Create folder in fail directory and move files there
+                WString folderName=failPath+"/"+taskName;
+
+                // If the folder already exists, create a unique ID and append it to the
+                // taskname. This folder should never exist.
+                if (fs::exists(folderName.toUTF8()))
+                {
+                    // Get the time stamp (including ms)
+                    struct timeval  beg;
+                    struct tm      *t;
+                    gettimeofday( &beg, NULL );
+                    t = localtime( &beg.tv_sec );
+                    char tbuf[20];
+                    sprintf(tbuf, "%02d%02d%02d%03d", t->tm_hour, t->tm_min, t->tm_sec, ((int) beg.tv_usec)/1000);
+
+                    // Get the date stamp
+                    time_t rawtime;
+                    struct tm * timeinfo;
+                    time (&rawtime);
+                    timeinfo = localtime(&rawtime);
+                    char dbuf[20];
+                    strftime(dbuf,20,"%d%m%y",timeinfo);
+
+                    WString uniqueID=WString::fromUTF8(dbuf)+WString::fromUTF8(tbuf);
+                    folderName+="_"+uniqueID;
+                }
+
+                if (fs::exists(folderName.toUTF8()))
+                {
+                    // If also the folder with time stamp already exists, then we have a problem.
+                    showErrorMessage("Unable to find unique name in fail path.");
+                    unlockTask(taskName);
+                    return;
+                }
+
+                bool error=false;
+                try
+                {
+                    fs::create_directory(folderName.toUTF8());
+                }
+                catch(const boost::filesystem::filesystem_error& e)
+                {
+                    showErrorMessage("Unable to create unique folder in fail path.");
+                    error=true;
+                }
+
+                if (!error)
+                {
+                    // Create list of all files belonging to the task
+                    WStringList fileList;
+                    WString taskFileName=getFullTaskFileName(taskName, mode);
+                    fileList.push_back(getTaskFileName(taskName, mode));
+                    getAllFilesOfTask(taskFileName, fileList);
+
+                    for (int i=0; i<fileList.size(); i++)
+                    {
+                        WString copyFile=fileList.at(i);
+                        WString sourceFile=queuePath+"/"+copyFile;
+                        WString targetFile=folderName+"/"+copyFile;
+
+                        try
+                        {
+                            fs::rename(sourceFile.toUTF8(),targetFile.toUTF8());
+                        }
+                        catch(const boost::filesystem::filesystem_error& e)
+                        {
+                            error=true;
+                        }
+                    }
+                    if (error)
+                    {
+                        showErrorMessage("Error moving files to fail queue.");
+                    }
+                }
+
+                // Delete the lock file
+                unlockTask(taskName);
 
                 // Launch timer in 100 msec and update status
                 WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
@@ -1000,9 +1090,214 @@ bool ywQueuePage::getAllFilesOfTask(WString taskFileName, WStringList& fileList)
 
 
 void ywQueuePage::patchTask(WString taskName, int mode)
-{
-    Wt::WMessageBox::show("Coming soon!", "<p>Not implemented yet.</p>", Wt::Ok);
+{    
+    WString accValue="";
+    WString notificationsValue="";
+
+    // First, try to read the currently existing settings
+    WString fileName=getFullTaskFileName(taskName, mode);
+    WString errorText="";
+    if (fs::exists(fileName.toUTF8()))
+    {
+        try
+        {
+            boost::property_tree::ptree taskfile;
+            boost::property_tree::ini_parser::read_ini(fileName.toUTF8(), taskfile);
+
+            accValue=WString::fromUTF8(taskfile.get<std::string>("Task.ACC",""));
+            notificationsValue=WString::fromUTF8(taskfile.get<std::string>("Task.EMailNotification",""));
+        }
+        catch(const boost::property_tree::ptree_error &e)
+        {
+            errorText="Error reading task information";
+        }
+    }
+    else
+    {
+        errorText="Error finding task information";
+    }
+
+    // Abort operation if reading the existing values was not successful
+    if (!errorText.empty())
+    {
+        showErrorMessage(errorText);
+        return;
+    }
+
+    // Remove enclosing quotation marks, as created by QT for several items
+    std::string notificationMod=notificationsValue.toUTF8();
+    if (notificationMod[0]=='"')
+    {
+        notificationMod.erase(0, 1);
+    }
+    if (notificationMod[notificationMod.length()-1]=='"')
+    {
+        notificationMod.erase(notificationMod.length()-1, 1);
+    }
+    notificationsValue=WString::fromUTF8(notificationMod);
+
+    Wt::WDialog *patchDialog = new Wt::WDialog("Modify Task");
+
+    Wt::WPushButton *ok = new Wt::WPushButton("OK", patchDialog->footer());
+    ok->setDefault(false);
+
+    Wt::WPushButton *cancel = new Wt::WPushButton("Cancel", patchDialog->footer());
+    cancel->setDefault(true);
+    cancel->clicked().connect(patchDialog, &Wt::WDialog::reject);
+
+    Wt::WLabel *accLabel = new Wt::WLabel("ACC#:", patchDialog->contents());
+    Wt::WLineEdit *accEdit = new Wt::WLineEdit(patchDialog->contents());
+    accLabel->setBuddy(accEdit);
+    accEdit->setText(accValue);
+
+    Wt::WRegExpValidator *accValidator=new Wt::WRegExpValidator("[0-9]{0,12}");
+    accValidator->setMandatory(true);
+    accEdit->setValidator(accValidator);
+
+    accEdit->keyWentUp().connect(std::bind([=] () {
+        ok->setDisabled(accEdit->validate() != Wt::WValidator::Valid);
+    }));
+
+    ok->clicked().connect(std::bind([=] () {
+        if (accEdit->validate())
+        {
+            patchDialog->accept();
+        }
+    }));
+
+    Wt::WLabel *notificationLabel = new Wt::WLabel("Notifications:", patchDialog->contents());
+    notificationLabel->setMargin(10, Wt::Top);
+    Wt::WLineEdit *notificationEdit = new Wt::WLineEdit(patchDialog->contents());
+    notificationLabel->setBuddy(notificationEdit);
+    notificationEdit->setText(notificationsValue);
+
+    patchDialog->rejectWhenEscapePressed();
+    patchDialog->setModal(true);
+
+
+    // Process the dialog result.
+    patchDialog->finished().connect(std::bind([=] () {
+        if (patchDialog->result()==Wt::WDialog::Accepted)
+        {
+            doPatchTask(taskName, mode, accEdit->text(), notificationEdit->text());
+        }
+        delete patchDialog;
+    }));
+
+    patchDialog->resize(600,Wt::WLength::Auto);
+    patchDialog->refresh();
+    patchDialog->show();
 }
+
+
+void ywQueuePage::doPatchTask(WString taskName, int mode, WString newACC, WString newNotifications)
+{
+    WString taskFilename=getFullTaskFileName(taskName, mode);
+
+    // First, create a lockfile in the queue directory
+    if (!lockTask(taskName))
+    {
+        showErrorMessage("Locking the task not possible.");
+        return;
+    }
+
+    // Save the last modification time (so that the processing order is preserved)
+    std::time_t modtime = std::time(0);
+    try
+    {
+        fs::path p(taskFilename.toUTF8());
+        modtime=fs::last_write_time(p);
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        showErrorMessage("Unable to retrieve task modification time. Check Samba configuration.");
+    }
+
+    // First, try to read the currently existing settings
+    bool error=false;
+    if (fs::exists(taskFilename.toUTF8()))
+    {
+        try
+        {
+            boost::property_tree::ptree taskfile;
+            boost::property_tree::ini_parser::read_ini(taskFilename.toUTF8(), taskfile);
+
+            taskfile.put("Task.ACC", newACC.toUTF8());
+
+            if (newNotifications.toUTF8().find(',')!=string::npos)
+            {
+                newNotifications="\""+newNotifications+"\"";
+            }
+            taskfile.put("Task.EMailNotification", newNotifications.toUTF8());
+
+            boost::property_tree::ini_parser::write_ini(taskFilename.toUTF8(), taskfile);
+        }
+        catch(const boost::property_tree::ptree_error &e)
+        {
+            error=true;
+            showErrorMessage("Error changing task information.");
+        }
+    }
+    else
+    {
+        error=true;
+        showErrorMessage("Error finding task information.");
+    }
+
+    // Now recover the previous file modification time (to preserve the processsing order)
+    try
+    {
+        fs::path p(taskFilename.toUTF8());
+        fs::last_write_time(p,modtime);
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        showErrorMessage("Reverting task modification time not possible. Check your Samba configuration.");
+    }
+
+    unlockTask(taskName);
+
+    // Launch timer in 100 msec and update status
+    WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+}
+
+
+void ywQueuePage::pushbackTask(WString taskName, int mode)
+{
+    WString taskFilename=getFullTaskFileName(taskName, mode);
+
+    if (!fs::exists(taskFilename.toUTF8()))
+    {
+        showErrorMessage("Could not find task.");
+        return;
+    }
+
+    // First, create a lockfile in the queue directory
+    if (!lockTask(taskName))
+    {
+        showErrorMessage("Locking the task not possible.");
+        return;
+    }
+
+    // Get current time
+    std::time_t n = std::time(0);
+
+    try
+    {
+        fs::path p(taskFilename.toUTF8());
+        fs::last_write_time(p,n);
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        showErrorMessage("Pushing back task not possible. Check your Samba configuration.");
+    }
+
+    unlockTask(taskName);
+
+    // Launch timer in 100 msec and update status
+    WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
+}
+
 
 
 void ywQueuePage::restartTask(WString taskName, int mode)
