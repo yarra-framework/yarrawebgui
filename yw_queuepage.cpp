@@ -441,6 +441,12 @@ void ywQueuePage::showInfo (WString taskName, int mode)
         fileName=getFailTaskFile(fileName);
     }
 
+    if (mode==MODE_PROC)
+    {
+        // Find the full name of the task file in the work directory (which can be .task, .task_prio, .task_night)
+        fileName=getWorkTaskFile();
+    }
+
     if (fs::exists(fileName.toUTF8()))
     {
         try
