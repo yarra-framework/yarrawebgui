@@ -109,6 +109,49 @@ bool ywServerInterface::updateStatus()
 }
 
 
+bool ywServerInterface::isServerRunning(WString yarraPath)
+{
+    WString statusCmd=yarraPath+"/ServerCtrl -d --p";
+
+    FILE* process=popen(statusCmd.toUTF8().data(), "r");
+    if (process==NULL)
+    {
+        return false;
+    }
+
+    WString reply="";
+
+    char buffer[1028];
+    while (fgets(buffer, 1028, process) != NULL)
+    {
+        reply+=WString(buffer);
+    }
+
+    pclose(process);
+
+    // Check if server is idle. That might be the most frequent case
+    if (reply.toUTF8().find("!I#")!=string::npos)
+    {
+        return true;
+    }
+
+    // Check if the server might be down
+    if (reply.toUTF8().find("!F#")!=string::npos)
+    {
+        return false;
+    }
+
+    // Check if there is an error communicating with the server (unlikely)
+    if (reply.toUTF8().find("!E#")!=string::npos)
+    {
+        return false;
+    }
+
+    // OK, the remaining case is that the server is processing a case
+    return true;
+}
+
+
 bool ywServerInterface::startServer()
 {
     WString statusCmd="./yarradexec sudo start yarra";

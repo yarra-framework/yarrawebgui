@@ -350,8 +350,11 @@ void ywStatusPage::callKillServer()
             messageBox.exec();
         }
 
-        // Launch timer in 1 sec and update status
+        // Launch timer in 1 sec and update status        
         WTimer::singleShot(1000, this, &ywStatusPage::refreshStatus);
+        // Launch timer again in 3 sec because moving the current file to the fail directory might take
+        // time, thus the server might otherwise remain with "Shutting Down" badge
+        WTimer::singleShot(3000, this, &ywStatusPage::refreshStatus);
     }
 }
 

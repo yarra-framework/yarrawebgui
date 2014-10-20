@@ -1544,6 +1544,7 @@ void ywQueuePage::editTaskFile(WString taskName, int mode)
     Wt::WTextArea *editor = new Wt::WTextArea();
     editor->setText(taskContent);
     contentLayout->insertWidget(0,editor);
+    editor->setJavaScriptMember("spellcheck","false");
 
     editDialog->contents()->setLayout(contentLayout);
 

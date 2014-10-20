@@ -16,7 +16,8 @@ SOURCES += main.cpp \
     yw_configpage.cpp \
     yw_serverinterface.cpp \
     yw_logpage.cpp \
-    yw_queuepage.cpp
+    yw_queuepage.cpp \
+    yw_helper.cpp
 
 HEADERS += \
     yw_configuration.h \
@@ -27,5 +28,6 @@ HEADERS += \
     yw_configpage.h \
     yw_serverinterface.h \
     yw_logpage.h \
-    yw_queuepage.h
+    yw_queuepage.h \
+    yw_helper.h
 

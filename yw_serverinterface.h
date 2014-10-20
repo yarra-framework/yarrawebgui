@@ -28,6 +28,7 @@ public:
     WString getTaskLogFilename();
 
     bool updateStatus();
+    static bool isServerRunning(WString yarraPath);
 
     bool startServer();
     bool stopServer();
