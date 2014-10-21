@@ -72,7 +72,7 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
 
     nameEdit->enterPressed().connect(std::bind([=] () {
         pwdEdit->setFocus();
-        }));
+    }));
 
 
     Wt::WPushButton* loginButton = new Wt::WPushButton("Login");

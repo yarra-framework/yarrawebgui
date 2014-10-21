@@ -11,6 +11,7 @@
 #define YW_EXT_TASKNIGHT ".task_night"
 
 #define YW_EXT_LOCK      ".lock"
+#define YW_EXT_MODE      ".mode"
 
 #include <Wt/WString>
 

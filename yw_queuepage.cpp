@@ -1531,7 +1531,7 @@ void ywQueuePage::editTaskFile(WString taskName, int mode)
     Wt::WDialog *editDialog = new Wt::WDialog("Edit Task File");
 
     Wt::WPushButton *save = new Wt::WPushButton("Save", editDialog->footer());
-    save->setDefault(false);
+    save->setDefault(true);
     save->clicked().connect(editDialog, &Wt::WDialog::accept);
 
     Wt::WPushButton *cancel = new Wt::WPushButton("Cancel", editDialog->footer());

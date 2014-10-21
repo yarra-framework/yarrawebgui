@@ -8,6 +8,11 @@ class ywApplication;
 using namespace Wt;
 
 
+class ywConfigPageModes;
+class ywConfigPageModeList;
+class ywConfigPageServer;
+
+
 class ywConfigPage : public Wt::WContainerWidget
 {
 public:
@@ -16,11 +21,17 @@ public:
     static ywConfigPage* createInstance(ywApplication *parent);
 
     void refreshStatus();
+    void refreshSubpage();
     void showErrorMessage(WString errorMessage);
 
     ywApplication* app;
 
+    Wt::WMenu *configMenu;
     Wt::WText* serverStatusLabel;
+
+    ywConfigPageModes* page0;
+    ywConfigPageModeList* page1;
+    ywConfigPageServer* page2;
 };
 
 
@@ -31,7 +42,7 @@ public:
 
     ywConfigPage* parent;
     Wt::WPushButton* saveBtn;
-    Wt::WTextArea *editor;
+    Wt::WTextArea* editor;
 
     WString readServerConfig();
     bool writeServerConfig(WString newConfig);
@@ -46,11 +57,33 @@ public:
 
     ywConfigPage* parent;
     Wt::WPushButton* saveBtn;
-    Wt::WTextArea *editor;
+    Wt::WTextArea* editor;
 
     WString readModeList();
     bool writeModeList(WString newConfig);
     void refreshEditor();
+};
+
+
+
+class ywConfigPageModes : public Wt::WContainerWidget
+{
+public:
+    ywConfigPageModes(ywConfigPage* pageParent);
+
+    ywConfigPage* parent;
+    Wt::WTextArea* editor;
+    Wt::WComboBox* modeList;
+
+    void refresh();
+    void refreshModes();
+    void showMode(int index);
+
+    void deleteMode();
+    void addMode();
+    void doAddMode(WString name, WString templateMode);
+    void saveMode();
+    void generateModeList();
 };
 
 

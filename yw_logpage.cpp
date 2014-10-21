@@ -110,7 +110,7 @@ ywLogPage* ywLogPage::createInstance(ywApplication* parent)
 void ywLogPage::deleteLog()
 {
     Wt::StandardButton answer=Wt::WMessageBox::show("Delete Task Log",
-                                                    "Are you sure to permaently delete this log file?",
+                                                    "Are you sure to permanently delete this log file?",
                                                     Wt::Ok | Wt::Cancel);
     if (answer==Wt::Ok)
     {
