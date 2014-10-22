@@ -197,7 +197,7 @@ bool ywConfigPageYMGenerator::parseModeFiles()
 
             if (!isDisabled)
             {
-                int sortIndex=modecontent.get<bool>("ClientConfig.SortIndex",0);
+                int sortIndex=modecontent.get<int>("ClientConfig.SortIndex",0);
 
                 ywcModeEntry* item=new ywcModeEntry;
                 orderedModeList.insert(ywcModeList::value_type(sortIndex, item));
@@ -232,7 +232,7 @@ bool ywConfigPageYMGenerator::parseModeFiles()
 
 bool ywConfigPageYMGenerator::generateYMFile()
 {
-    WString fileName=app->configuration->yarraQueuePath+"/YarraModes.txt";
+    WString fileName=app->configuration->yarraQueuePath+"/YarraModes.cfg";
 
     if (!fs::exists(fileName.toUTF8()))
     {

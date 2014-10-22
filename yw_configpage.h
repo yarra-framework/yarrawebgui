@@ -84,6 +84,7 @@ public:
     void doAddMode(WString name, WString templateMode);
     void saveMode();
     void generateModeList();
+    void showHelp();
 };
 
 

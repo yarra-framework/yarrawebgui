@@ -470,6 +470,12 @@ ywConfigPageModes::ywConfigPageModes(ywConfigPage* pageParent)
         refresh();
     }));
 
+    Wt::WPushButton* helpBtn=new Wt::WPushButton("Help", innerBtnContainer);
+    helpBtn->setStyleClass("btn");
+    helpBtn->clicked().connect(std::bind([=] () {
+        showHelp();
+    }));
+
     Wt::WPushButton* modeListBtn=new Wt::WPushButton("Generate Mode List", innerBtnContainer);
     modeListBtn->setStyleClass("btn-primary");
     modeListBtn->clicked().connect(std::bind([=] () {
@@ -482,6 +488,7 @@ ywConfigPageModes::ywConfigPageModes(ywConfigPage* pageParent)
     innerLayout->insertWidget(3,refreshBtn,0);
     innerLayout->insertWidget(4,new Wt::WContainerWidget,1);
     innerLayout->insertWidget(5,modeListBtn,0);
+    innerLayout->insertWidget(6,helpBtn,0);
 
     subLayout->insertWidget(2,innerBtnContainer,0);
 
@@ -817,3 +824,27 @@ void ywConfigPageModes::generateModeList()
 }
 
 
+void ywConfigPageModes::showHelp()
+{
+    Wt::WDialog *infoDialog = new Wt::WDialog("Available Macros");
+
+    Wt::WPushButton *ok = new Wt::WPushButton("Close", infoDialog->footer());
+    ok->setDefault(false);
+
+    ok->clicked().connect(std::bind([=] () {
+        infoDialog->accept();
+    }));
+
+    infoDialog->rejectWhenEscapePressed();
+    infoDialog->setModal(false);
+
+    infoDialog->finished().connect(std::bind([=] () {
+        delete infoDialog;
+    }));
+
+    // TODO: Add table with content, adapt size of window
+
+    infoDialog->resize(600,Wt::WLength::Auto);
+    infoDialog->refresh();
+    infoDialog->show();
+}
