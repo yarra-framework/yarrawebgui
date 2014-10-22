@@ -1,4 +1,5 @@
 #include "yw_configpage.h"
+#include "yw_configpage_ymgenerator.h"
 #include "yw_serverinterface.h"
 #include "yw_application.h"
 #include "yw_helper.h"
@@ -365,7 +366,7 @@ bool ywConfigPageModeList::writeModeList(WString newConfig)
         return false;
     }
 
-    // TODO: chmod 740 on file name!
+    // chmod 740 on file name!
     if (chmod(fileName.toUTF8().data(),S_IRUSR | S_IWUSR) != 0)
     {
         parent->showErrorMessage("Cannot change write permission of mode file. Check file permissions.");
@@ -505,7 +506,7 @@ void ywConfigPageModes::refreshModes()
         {
             for( fs::directory_iterator dir_iter(modeDir) ; dir_iter != end_iter ; ++dir_iter)
             {
-                if ( (fs::is_regular_file(dir_iter->status()) && (dir_iter->path().extension()==".mode") ))
+                if ( (fs::is_regular_file(dir_iter->status()) && (dir_iter->path().extension()==YW_EXT_MODE) ))
                 {
                     result_set.push_back(WString::fromUTF8(dir_iter->path().stem().generic_string()));
                 }
@@ -518,7 +519,7 @@ void ywConfigPageModes::refreshModes()
 
     std::sort(result_set.begin(), result_set.end());
 
-    for (int i=0; i<result_set.size(); i++)
+    for (size_t i=0; i<result_set.size(); i++)
     {
         modeList->addItem(result_set.at(i));
     }
@@ -803,16 +804,16 @@ void ywConfigPageModes::saveMode()
 
 void ywConfigPageModes::generateModeList()
 {
-    Wt::WMessageBox *messageBox = new Wt::WMessageBox
-       ("Coming soon...", "<p>This function has not been implemented yet.</p>",
-        Wt::Information, Wt::Ok);
-
-    messageBox->setModal(true);
-    messageBox->buttonClicked().connect(std::bind([=] ()
+    Wt::StandardButton answer=Wt::WMessageBox::show("Generate Mode File",
+                                                    "<p>This function will generate an updated YarraModes.cfg file from the [ClientConfig] sections in existing mode files.</p>\
+                                                    <p><strong>Warning:</strong> This will overwrite your existing YarraModes.cfg file. </p>\
+                                                    <p>Are you sure to continue?</p>",
+                                                    Wt::Ok | Wt::Cancel);
+    if (answer==Wt::Ok)
     {
-        delete messageBox;
-    }));
-    messageBox->show();
+        ywConfigPageYMGenerator instance(parent->app);
+        instance.perform();
+    }
 }
 
 
