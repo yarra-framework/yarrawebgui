@@ -12,6 +12,8 @@ class ywcModeEntry
 {
 public:
     WString ID;
+    WString tag;
+    WString name;
     WStringList entries;
     WStringList values;
 };
@@ -31,6 +33,7 @@ public:
 
     bool parseModeFiles();
     bool generateYMFile();
+    void showModeTable();
 
     ywApplication* app;
 

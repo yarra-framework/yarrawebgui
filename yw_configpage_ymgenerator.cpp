@@ -167,6 +167,7 @@ void ywConfigPageYMGenerator::perform()
     else
     {
         generateYMFile();
+        showModeTable();
     }
 
     freeModeList();
@@ -202,6 +203,9 @@ bool ywConfigPageYMGenerator::parseModeFiles()
                 ywcModeEntry* item=new ywcModeEntry;
                 orderedModeList.insert(ywcModeList::value_type(sortIndex, item));
                 item->ID=modeFiles.at(i);
+
+                item->name=WString::fromUTF8(modecontent.get<std::string>("ClientConfig.Name",""));
+                item->tag= WString::fromUTF8(modecontent.get<std::string>("ClientConfig.Tag",""));
 
                 WString entry="";
                 WString value="";
@@ -291,5 +295,62 @@ bool ywConfigPageYMGenerator::generateYMFile()
     ywHelper::unlockFile(fileName.toUTF8());
 
     return true;
+}
+
+
+void ywConfigPageYMGenerator::showModeTable()
+{
+    Wt::WDialog *infoDialog = new Wt::WDialog("Generated Mode List");
+    infoDialog->setResizable(true);
+    infoDialog->setModal(true);
+    infoDialog->rejectWhenEscapePressed();
+
+    Wt::WPushButton *ok = new Wt::WPushButton("Close", infoDialog->footer());
+    ok->setDefault(true);
+
+    ok->clicked().connect(std::bind([=] () {
+        infoDialog->accept();
+    }));
+
+    infoDialog->finished().connect(std::bind([=] () {
+        delete infoDialog;
+    }));
+
+    Wt::WVBoxLayout* scrollLayout = new Wt::WVBoxLayout();
+    infoDialog->contents()->setLayout(scrollLayout);
+    scrollLayout->setContentsMargins(0, 0, 0, 0);
+
+    Wt::WText* infoTitle = new Wt::WText();
+    infoTitle->setText("The mode list (YarraModes.cfg) has been generated and contains the following reconstruction modes:");
+    infoTitle->setMargin(10, Wt::Bottom);
+    scrollLayout->addWidget(infoTitle,0);
+
+    // Add table with content, adapt size of window
+    Wt::WScrollArea* scrollArea = new Wt::WScrollArea();
+    scrollLayout->addWidget(scrollArea,1);
+
+    Wt::WText* infoText = new Wt::WText();
+    infoText->setWordWrap(false);
+
+    WString listContent="<table class=\"table table-striped table-hover\"> \
+            <tbody> \
+            <tr> \
+            <td><strong>Tag</strong></td> \
+            <td><strong>Name</strong></td> \
+            <td><strong>File</strong></td> \
+            </tr>";
+
+    for (ywcModeList::iterator ii=orderedModeList.begin(); ii!=orderedModeList.end(); ++ii)
+    {
+        listContent+=WString("<tr><td>{1}</td><td>{2}</td><td>{3}.mode</td></tr>").arg((*ii).second->tag).arg((*ii).second->name).arg((*ii).second->ID);
+    }
+
+    listContent+="</tbody></table>";
+    infoText->setText(listContent);
+
+    scrollArea->setWidget(infoText);
+    infoDialog->resize(800,WLength(80,Wt::WLength::Percentage));
+    //infoDialog->setMaximumSize(WLength(90,Wt::WLength::Percentage),WLength(90,Wt::WLength::Percentage));
+    infoDialog->show();
 }
 

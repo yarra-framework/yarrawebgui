@@ -62,7 +62,6 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
     outerLayout->setContentsMargins(0, 0, 0, 0);
 
     Wt::WHBoxLayout* configPageLayout = new Wt::WHBoxLayout();
-    //this->setLayout(configPageLayout);
 
     outerLayout->addWidget(serverStatusLabel,0);
     outerLayout->addLayout(configPageLayout,1);
@@ -279,8 +278,20 @@ ywConfigPageModeList::ywConfigPageModeList(ywConfigPage* pageParent)
     this->setLayout(subLayout);
     subLayout->setContentsMargins(0, 0, 0, 0);
 
+    Wt::WText* infoLabel = new Wt::WText();
+    infoLabel->setInline(false);
+    infoLabel->setTextFormat(Wt::XHTMLUnsafeText);
+    infoLabel->setText("<span class=\"label label-primary\">NOTICE</span>&nbsp;&nbsp;&nbsp;Editing the mode list directly is deprecated. Use the <u>Generate Mode List</u> mechanism instead.");
+    infoLabel->setMargin(10, Wt::Bottom);
+
+    infoLabel->clicked().connect(std::bind([=] () {
+        parent->configMenu->select(0);
+    }));
+    infoLabel->decorationStyle().setCursor(PointingHandCursor);
+    subLayout->insertWidget(0,infoLabel,0);
+
     editor = new Wt::WTextArea();
-    subLayout->insertWidget(0,editor,1);
+    subLayout->insertWidget(1,editor,1);
     editor->setJavaScriptMember("spellcheck","false");
 
     WContainerWidget* innerBtnContainer=new WContainerWidget();
@@ -306,10 +317,9 @@ ywConfigPageModeList::ywConfigPageModeList(ywConfigPage* pageParent)
     innerLayout->insertWidget(1,refreshBtn,0,Wt::AlignLeft);
     innerLayout->insertWidget(2,new Wt::WContainerWidget,1);
 
-
     refreshEditor();
 
-    subLayout->insertWidget(1,innerBtnContainer,0);
+    subLayout->insertWidget(2,innerBtnContainer,0);
 }
 
 
@@ -811,7 +821,7 @@ void ywConfigPageModes::saveMode()
 
 void ywConfigPageModes::generateModeList()
 {
-    Wt::StandardButton answer=Wt::WMessageBox::show("Generate Mode File",
+    Wt::StandardButton answer=Wt::WMessageBox::show("Generate Mode List",
                                                     "<p>This function will generate an updated YarraModes.cfg file from the [ClientConfig] sections in existing mode files.</p>\
                                                     <p><strong>Warning:</strong> This will overwrite your existing YarraModes.cfg file. </p>\
                                                     <p>Are you sure to continue?</p>",
@@ -827,6 +837,7 @@ void ywConfigPageModes::generateModeList()
 void ywConfigPageModes::showHelp()
 {
     Wt::WDialog *infoDialog = new Wt::WDialog("Available Macros");
+    infoDialog->setResizable(true);
 
     Wt::WPushButton *ok = new Wt::WPushButton("Close", infoDialog->footer());
     ok->setDefault(false);
@@ -842,9 +853,98 @@ void ywConfigPageModes::showHelp()
         delete infoDialog;
     }));
 
-    // TODO: Add table with content, adapt size of window
+    Wt::WVBoxLayout* scrollLayout = new Wt::WVBoxLayout();
+    infoDialog->contents()->setLayout(scrollLayout);
+    scrollLayout->setContentsMargins(0, 0, 0, 0);
 
-    infoDialog->resize(600,Wt::WLength::Auto);
-    infoDialog->refresh();
+    // Add table with content, adapt size of window
+    Wt::WScrollArea* scrollArea = new Wt::WScrollArea();
+    scrollLayout->addWidget(scrollArea,1);
+
+    Wt::WText* infoText = new Wt::WText();
+    //infoText->setTextFormat(Wt::XHTMLUnsafeText);
+    infoText->setWordWrap(false);
+    infoText->setText("\
+                      <table class=\"table table-striped table-hover\"> \
+                      <tbody> \
+                      <tr> \
+                      <td><strong>Macro</strong></td> \
+                      <td><strong>Meaning</strong></td> \
+                      </tr> \
+                      <tr> \
+                      <td>%rif</td> \
+                      <td>Name of the input file (TWIX file), including extension (.dat)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%rid</td> \
+                      <td>Path of the input file (normally yarra/work) without trailing &#8220;/&#8221;</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%rin</td> \
+                      <td>Name of the input file without extension</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%rit</td> \
+                      <td>Name if the task file, including the extension (.task, .task_prio, .task_night)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%rod</td> \
+                      <td>Output directory for the reconstruction module</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%pid</td> \
+                      <td>For post-processing modules: Path with the input files</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%pod</td> \
+                      <td>For post-processing modules: Output path</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%td</td> \
+                      <td>For transfer modules: Path with the input files that should be transferred</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%bd</td> \
+                      <td>Directory where the binaries of the modules are located (usually yarra/modules)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%md</td> \
+                      <td>Path to the mode files (usually yarra/modes)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%mf</td> \
+                      <td>Name of the mode file of the current reconstruction mode</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%mc</td> \
+                      <td>Name of the mode file including the path (%md/%mc)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%tmp</td> \
+                      <td>Path where modules can create temporary files (deleted after each step)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%vacc</td> \
+                      <td>Submitted accession number</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%vparam</td> \
+                      <td>Submitted free parameter value (if provided by mode)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%vuid</td> \
+                      <td>Unique task ID (incl processing time stamp)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%vtid</td> \
+                      <td>Task ID without time stamp (not unique if task sent twice)</td> \
+                      </tr> \
+                      </tbody>  \
+                      </table> \
+                      ");
+
+    scrollArea->setWidget(infoText);
+
+    infoDialog->resize(700,WLength(80,Wt::WLength::Percentage));
     infoDialog->show();
 }
