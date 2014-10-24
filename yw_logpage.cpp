@@ -26,6 +26,7 @@
 #include <Wt/WComboBox>
 #include <Wt/WScrollArea>
 #include <Wt/WFileResource>
+#include <Wt/WBreak>
 
 #include <boost/filesystem.hpp>
 
@@ -56,44 +57,50 @@ ywLogPage::ywLogPage(ywApplication* parent)
     logScrollArea->setWidget(logWidget);
     logLayout->addWidget(logScrollArea);
 
-    WContainerWidget* btnContainer=new WContainerWidget();
-    Wt::WHBoxLayout*  btnLayout=new Wt::WHBoxLayout();
-    btnLayout->setContentsMargins(0, 0, 0, 0);
-    btnContainer->setLayout(btnLayout);
-
     WContainerWidget* innerBtnContainer=new WContainerWidget();
+    Wt::WHBoxLayout*  innerLayout=new Wt::WHBoxLayout();
+    //innerLayout->setContentsMargins(9, 0, 9, 0);
+    innerLayout->setContentsMargins(0, 0, 0, 0);
+    innerLayout->setSpacing(4);
 
-    Wt::WPanel *panel = new Wt::WPanel();
-    btnLayout->addWidget(panel);
-    panel->setCentralWidget(innerBtnContainer);
-    panel->setMargin(30, Wt::Bottom);
-
-    downloadButton =new Wt::WPushButton("Download", innerBtnContainer);
-    downloadButton->setMargin(2);
+    downloadButton =new Wt::WPushButton("Download");
     downloadButton->setStyleClass("btn-primary");
     downloadButton->setLink(WLink((Wt::WResource*) &downloadRes));
+    innerLayout->addWidget(downloadButton,0);
 
     if (app->currentLevel==ywApplication::YW_USERLEVEL_ADMIN)
     {
-        deleteButton =new Wt::WPushButton("Delete", innerBtnContainer);
-        deleteButton->setMargin(2);
+        deleteButton =new Wt::WPushButton("Delete");
         deleteButton->setStyleClass("btn-primary");
         deleteButton->clicked().connect(this, &ywLogPage::deleteLog);
+        innerLayout->addWidget(deleteButton,0);
     }
 
     Wt::WPushButton* button=0;
-    button =new Wt::WPushButton("Refresh", innerBtnContainer);
+    button =new Wt::WPushButton("Refresh");
     button->setStyleClass("btn");
-    button->setMargin(2);
     button->clicked().connect(this, &ywLogPage::refreshLogs);
+    innerLayout->addWidget(button,0);
+
+    if (app->currentLevel==ywApplication::YW_USERLEVEL_ADMIN)
+    {
+        Wt::WPushButton* purgeLogsButton =new Wt::WPushButton("Purge Old Logs");
+        purgeLogsButton->setStyleClass("btn-primary");
+        purgeLogsButton->clicked().connect(this, &ywLogPage::purgeLogs);
+        innerLayout->addStretch(1);
+        innerLayout->addWidget(purgeLogsButton,0);
+    }
+
+    downloadRes.setMimeType("plain/text");
+    downloadRes.suggestFileName("task.log");
+
+    innerBtnContainer->setLayout(innerLayout);
+    innerBtnContainer->setMargin(30, Wt::Bottom);
 
     pageLayout->addWidget(head1);
     pageLayout->addWidget(logselectCombobox);
     pageLayout->addWidget(logContainer,1);
-    pageLayout->addWidget(btnContainer);
-
-    downloadRes.setMimeType("plain/text");
-    downloadRes.suggestFileName("task.log");
+    pageLayout->addWidget(innerBtnContainer);
 
     previousItem="";
     refreshLogs();
@@ -259,4 +266,14 @@ void ywLogPage::showLog(int index)
 }
 
 
-
+void ywLogPage::purgeLogs()
+{
+    Wt::StandardButton answer=Wt::WMessageBox::show("Purge Old Logs",
+                                                    "<p><strong>Warning:</strong> This operation will delete all logs files older than 14 days.</p>\
+                                                    <p>Are you sure to permanently delete these files?</p>",
+                                                    Wt::Ok | Wt::Cancel);
+    if (answer==Wt::Ok)
+    {
+        // TODO
+    }
+}

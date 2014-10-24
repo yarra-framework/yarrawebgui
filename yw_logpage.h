@@ -32,6 +32,7 @@ public:
 
     void deleteLog();
     void refreshLogs();
+    void purgeLogs();
 
     void showLog(int index);
 
