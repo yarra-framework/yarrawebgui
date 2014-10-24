@@ -56,10 +56,11 @@ ywLogPage::ywLogPage(ywApplication* parent)
     logScrollArea=new Wt::WScrollArea();
     logScrollArea->setWidget(logWidget);
     logLayout->addWidget(logScrollArea);
+    logLayout->setContentsMargins(11, 11, 11, 16);
+    logContainer->addStyleClass("log-frame");
 
     WContainerWidget* innerBtnContainer=new WContainerWidget();
     Wt::WHBoxLayout*  innerLayout=new Wt::WHBoxLayout();
-    //innerLayout->setContentsMargins(9, 0, 9, 0);
     innerLayout->setContentsMargins(0, 0, 0, 0);
     innerLayout->setSpacing(4);
 
@@ -274,6 +275,21 @@ void ywLogPage::purgeLogs()
                                                     Wt::Ok | Wt::Cancel);
     if (answer==Wt::Ok)
     {
-        // TODO
+        WString command="find "+app->configuration->yarraLogPath+"/*.log -mtime +14 -exec rm -f {} \\;";
+        int result=system(command.toUTF8().data());
+
+        if (result==-1)
+        {
+            Wt::WMessageBox *messageBox = new Wt::WMessageBox
+               ("Error", "<p>Unfortunately, deleting the log file was not possible.</p>",
+                Wt::Critical, Wt::Ok);
+
+            messageBox->setModal(true);
+            messageBox->buttonClicked().connect(std::bind([=] () {
+                delete messageBox;
+            }));
+            messageBox->show();
+        }
+        refreshLogs();
     }
 }
