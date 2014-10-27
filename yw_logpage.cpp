@@ -83,12 +83,13 @@ ywLogPage::ywLogPage(ywApplication* parent)
     button->clicked().connect(this, &ywLogPage::refreshLogs);
     innerLayout->addWidget(button,0);
 
+    innerLayout->addStretch(1);
+
     if (app->currentLevel==ywApplication::YW_USERLEVEL_ADMIN)
     {
         Wt::WPushButton* purgeLogsButton =new Wt::WPushButton("Purge Old Logs");
         purgeLogsButton->setStyleClass("btn-primary");
         purgeLogsButton->clicked().connect(this, &ywLogPage::purgeLogs);
-        innerLayout->addStretch(1);
         innerLayout->addWidget(purgeLogsButton,0);
     }
 
