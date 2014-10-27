@@ -472,7 +472,7 @@ void ywQueuePage::showInfo (WString taskName, int mode)
             infoText+="<br /><strong>Submitted:</strong> "+WString::fromUTF8(taskfile.get<std::string>("Information.TaskDate","")) + "&nbsp;&nbsp;" +
                                                                                 WString::fromUTF8(taskfile.get<std::string>("Information.TaskTime",""));
             WString scanSizeStr="";
-            int scanSize=taskfile.get<int>("Information.ScanFileSize",0)/(1024*1024);
+            long scanSize=taskfile.get<long>("Information.ScanFileSize",0)/(1024*1024);
             if (scanSize<1024)
             {
                 scanSizeStr=WString("{1} MB").arg(scanSize);
