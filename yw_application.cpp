@@ -143,7 +143,7 @@ void ywApplication::performLogin()
     Wt::WPopupMenu *popup = new Wt::WPopupMenu();
 
     WMenuItem* helpItem=popup->addItem("Help");
-    helpItem->setLink(Wt::WLink("http://ktblock.de/yarra"));
+    helpItem->setLink(Wt::WLink("http://yarra.rocks"));
     helpItem->setLinkTarget(Wt::TargetNewWindow);
 
     popup->addItem("About")->triggered().connect(this, &ywApplication::showAbout);

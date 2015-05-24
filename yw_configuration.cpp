@@ -1,6 +1,7 @@
 #include "yw_configuration.h"
 #include "yw_global.h"
 
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/exception/all.hpp>
@@ -8,6 +9,10 @@
 #include <boost/exception/error_info.hpp>
 #include <errno.h>
 #include <iostream>
+
+
+namespace fs = boost::filesystem;
+
 
 ywConfiguration::ywConfiguration()
 {       
@@ -86,6 +91,16 @@ void ywConfiguration::loadConfiguration()
         // Now try to read the yarra config file
         boost::property_tree::ptree serverIni;
         WString serverFilename=yarraPath+"/"+YW_YARRACONFIG;
+
+        // TODO: Check if the yarra config file can be found! Otherwise, stop the webgui
+        if (!fs::exists(serverFilename.toUTF8()))
+        {
+            std::cout << "ERROR: Can't find YarraServer configuration file " << serverFilename << std::endl;
+            std::cout << "       Has the path to the YarraServer installation been set correctly?" << std::endl;
+            configurationValid=false;
+            return;
+        }
+
         boost::property_tree::ini_parser::read_ini(serverFilename.toUTF8(), serverIni);
         serverName=WString::fromUTF8(serverIni.get<std::string>("Server.Name","Unknown"));
         serverType=WString::fromUTF8(serverIni.get<std::string>("Server.Type","Unknown"));

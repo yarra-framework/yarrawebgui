@@ -188,12 +188,12 @@ bool ywConfigPageYMGenerator::parseModeFiles()
 
     for (size_t i=0; i<modeFiles.size(); i++)
     {
-        WString fileName=app->configuration->yarraModesPath+"/"+modeFiles.at(i)+YW_EXT_MODE;
-        boost::property_tree::ptree modecontent;
-        boost::property_tree::ini_parser::read_ini(fileName.toUTF8(), modecontent);
-
         try
         {
+            WString fileName=app->configuration->yarraModesPath+"/"+modeFiles.at(i)+YW_EXT_MODE;
+            boost::property_tree::ptree modecontent;
+            boost::property_tree::ini_parser::read_ini(fileName.toUTF8(), modecontent);
+
             bool isDisabled=modecontent.get<bool>("ClientConfig.Disabled",false);
 
             if (!isDisabled)
@@ -280,7 +280,6 @@ bool ywConfigPageYMGenerator::generateYMFile()
                 modefile.put(WString(prefix+(*ii).second->entries.at(i)).toUTF8(), (*ii).second->values.at(i).toUTF8());
             }
         }
-
 
         boost::property_tree::ini_parser::write_ini(fileName.toUTF8(), modefile);
     }

@@ -41,6 +41,11 @@ WApplication* createApplication(const WEnvironment& env)
 int main(int argc, char **argv)
 {
     configurationInstance.loadConfiguration();
+    if (!configurationInstance.isValid())
+    {
+        std::cout << "ERROR: Unable to start WebGUI" << std::endl;
+        return 1;
+    }
 
     // Prepare the arguments for calling the WRun commands
     char arg1[] = "--docroot=""html""";

@@ -1,13 +1,13 @@
-QT       += core
-QT       -= gui
-
 TARGET = YarraWebGUI
 
-LIBS += -lwt -lwthttp -lboost_signals -lboost_system -lboost_filesystem
+# Define identifier for Ubuntu Linux version (UBUNTU_1204 / UBUNTU_1404)
+QMAKE_CXXFLAGS += -DUBUNTU_1204
 QMAKE_CXXFLAGS += -DNDEBUG -std=c++0x -DWT_DEPRECATED_3_0_0
-CONFIG   += console
-CONFIG   -= app_bundle
+
+LIBS += -lwt -lwthttp -lboost_signals -lboost_system -lboost_filesystem
+
 TEMPLATE = app
+
 SOURCES += main.cpp \
     yw_configuration.cpp \
     yw_application.cpp \

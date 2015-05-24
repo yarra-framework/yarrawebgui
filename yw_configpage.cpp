@@ -758,7 +758,11 @@ void ywConfigPageModes::doAddMode(WString name, WString templateMode)
 
         try
         {
+#ifdef UBUNTU_1204
             boost::filesystem3::copy(fullTemplateFilename.toUTF8(), fullFilename.toUTF8());
+#else
+            boost::filesystem::copy(fullTemplateFilename.toUTF8(), fullFilename.toUTF8());
+#endif
         }
         catch(const boost::filesystem::filesystem_error& e)
         {
@@ -938,6 +942,10 @@ void ywConfigPageModes::showHelp()
                       <tr> \
                       <td>%vtid</td> \
                       <td>Task ID without time stamp (not unique if task sent twice)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%hq</td> \
+                      <td>Quote mark character (needed for nested Matlab calls with arguments)</td> \
                       </tr> \
                       </tbody>  \
                       </table> \
