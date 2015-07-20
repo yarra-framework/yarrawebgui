@@ -281,7 +281,7 @@ ywConfigPageModeList::ywConfigPageModeList(ywConfigPage* pageParent)
     Wt::WText* infoLabel = new Wt::WText();
     infoLabel->setInline(false);
     infoLabel->setTextFormat(Wt::XHTMLUnsafeText);
-    infoLabel->setText("<span class=\"label label-primary\">NOTICE</span>&nbsp;&nbsp;&nbsp;Editing the mode list directly is deprecated. Use the <u>Generate Mode List</u> mechanism instead.");
+    infoLabel->setText("<span class=\"label label-primary\">NOTICE</span>&nbsp;&nbsp;&nbsp;Editing the mode list directly is deprecated. Use the <u>Update Mode List</u> mechanism instead.");
     infoLabel->setMargin(10, Wt::Bottom);
 
     infoLabel->clicked().connect(std::bind([=] () {
@@ -486,7 +486,7 @@ ywConfigPageModes::ywConfigPageModes(ywConfigPage* pageParent)
         showHelp();
     }));
 
-    Wt::WPushButton* modeListBtn=new Wt::WPushButton("Generate Mode List", innerBtnContainer);
+    modeListBtn=new Wt::WPushButton("Update Mode List", innerBtnContainer);
     modeListBtn->setStyleClass("btn-primary");
     modeListBtn->clicked().connect(std::bind([=] () {
         generateModeList();
@@ -637,6 +637,11 @@ void ywConfigPageModes::deleteMode()
         {
             parent->showErrorMessage("A problem occured while deleting the mode file.");
         }
+        else
+        {
+            // Indicate that the mode list needs to be updated
+            setIndicateModeUpdate(true);
+        }
 
         refreshModes();
         showMode(0);
@@ -776,6 +781,9 @@ void ywConfigPageModes::doAddMode(WString name, WString templateMode)
     refreshModes();
     int modeIndex=modeList->findText(name);
     showMode(modeIndex);
+
+    // Indicate that the mode list needs to be updated
+    setIndicateModeUpdate(true);
 }
 
 
@@ -820,12 +828,15 @@ void ywConfigPageModes::saveMode()
         delete messageBox;
     }));
     messageBox->show();
+
+    // Indicate that the mode list needs to be updated
+    setIndicateModeUpdate(true);
 }
 
 
 void ywConfigPageModes::generateModeList()
 {
-    Wt::StandardButton answer=Wt::WMessageBox::show("Generate Mode List",
+    Wt::StandardButton answer=Wt::WMessageBox::show("Update Mode List",
                                                     "<p>This function will generate an updated YarraModes.cfg file from the [ClientConfig] sections in existing mode files.</p>\
                                                     <p><strong>Warning:</strong> This will overwrite your existing YarraModes.cfg file. </p>\
                                                     <p>Are you sure to continue?</p>",
@@ -834,6 +845,7 @@ void ywConfigPageModes::generateModeList()
     {
         ywConfigPageYMGenerator instance(parent->app);
         instance.perform();
+        setIndicateModeUpdate(false);
     }
 }
 
@@ -956,3 +968,19 @@ void ywConfigPageModes::showHelp()
     infoDialog->resize(700,WLength(80,Wt::WLength::Percentage));
     infoDialog->show();
 }
+
+
+void ywConfigPageModes::setIndicateModeUpdate(bool status)
+{
+    // Change the color of the "Update Mode List" button to indicate that the mode
+    // list needs to be updated (after changing, adding, or deleting a mode).
+    if (status)
+    {
+        modeListBtn->setAttributeValue("style","background-color:#FF6A13;border-color:#FF6A13;");
+    }
+    else
+    {
+        modeListBtn->setAttributeValue("style","background-color:#580F8B;border-color:#580F8B;");
+    }
+}
+

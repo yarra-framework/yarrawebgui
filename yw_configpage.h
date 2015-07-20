@@ -74,6 +74,7 @@ public:
     ywConfigPage* parent;
     Wt::WTextArea* editor;
     Wt::WComboBox* modeList;
+    Wt::WPushButton* modeListBtn;
 
     void refresh();
     void refreshModes();
@@ -85,6 +86,8 @@ public:
     void saveMode();
     void generateModeList();
     void showHelp();
+
+    void setIndicateModeUpdate(bool status);
 };
 
 
