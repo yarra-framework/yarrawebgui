@@ -1,7 +1,7 @@
 #ifndef YW_GLOBAL_H
 #define YW_GLOBAL_H
 
-#define YW_VERSION   "0.16"
+#define YW_VERSION   "0.17b1"
 
 #define YW_CONFIGFILE  "YarraWebGUI.ini"
 #define YW_YARRACONFIG "YarraServer.ini"

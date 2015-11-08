@@ -335,5 +335,13 @@ h3,
   margin-bottom: 10px;
 }
 
-
+.navbar-default .navbar-brand {
+  background-image: url("yarra_icon.png");
+  background-repeat: no-repeat;
+  background-position: left center;
+  margin-left: 10px;
+  padding-left: 41px;
+  padding-right: 18px;
+  padding-top: 14px;
+}
 

@@ -959,6 +959,10 @@ void ywConfigPageModes::showHelp()
                       <td>%hq</td> \
                       <td>Quote mark character (needed for nested Matlab calls with arguments)</td> \
                       </tr> \
+                      <tr> \
+                      <td>%hmb</td> \
+                      <td>Matlab binary (as defined in server configuration)</td> \
+                      </tr> \
                       </tbody>  \
                       </table> \
                       ");
