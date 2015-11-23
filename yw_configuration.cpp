@@ -103,7 +103,6 @@ void ywConfiguration::loadConfiguration()
 
         boost::property_tree::ini_parser::read_ini(serverFilename.toUTF8(), serverIni);
         serverName=WString::fromUTF8(serverIni.get<std::string>("Server.Name","Unknown"));
-        serverType=WString::fromUTF8(serverIni.get<std::string>("Server.Type","Unknown"));
 
         yarraLogPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Log",WString(yarraPath+yarraLogPath).toUTF8()));
         yarraModesPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Modes",WString(yarraPath+yarraModesPath).toUTF8()));

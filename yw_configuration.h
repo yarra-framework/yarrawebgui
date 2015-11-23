@@ -35,11 +35,7 @@ public:
     WString yarraFailPath;
     WString yarraStoragePath;
     WString yarraModulesPath;    
-
     WString serverName;
-    WString serverType;
-
-
 
     vector<ywUser*> users;
 

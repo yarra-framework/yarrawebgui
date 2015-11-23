@@ -179,7 +179,7 @@ void ywStatusPage::refreshStatus()
         break;
     }
 
-    widgetText+="</p><p><strong>Name: &nbsp;</strong>" + app->configuration->serverName + " (Server Type " + app->configuration->serverType + ")";
+    widgetText+="</p><p><strong>Name: &nbsp;</strong>" + app->configuration->serverName;
     widgetText+="<br /><strong>Status: &nbsp;</strong>" + app->server.serverStatusText;
 
     if  ((app->server.serverStatus==ywServerInterface::STATUS_PROCESSING) || (app->server.serverStatus==ywServerInterface::STATUS_PROCESSINGDOWN))
