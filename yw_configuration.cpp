@@ -21,14 +21,15 @@ ywConfiguration::ywConfiguration()
     serverName="Unknown";
     port="8080";
 
-    yarraPath=".";
-    yarraLogPath="/log";
-    yarraModesPath="/modes";
-    yarraQueuePath="/queue";
-    yarraWorkPath="/work";
-    yarraFailPath="/fail";
-    yarraStoragePath="/finished";
-    yarraModulesPath="/modules";
+    yarraPath           =".";
+    yarraLogPath        ="/log";
+    yarraModesPath      ="/modes";
+    yarraQueuePath      ="/queue";
+    yarraWorkPath       ="/work";
+    yarraFailPath       ="/fail";
+    yarraStoragePath    ="/finished";
+    yarraModulesPath    ="/modules";
+    yarraModulesUserPath="/modules_user";
 }
 
 
@@ -92,7 +93,7 @@ void ywConfiguration::loadConfiguration()
         boost::property_tree::ptree serverIni;
         WString serverFilename=yarraPath+"/"+YW_YARRACONFIG;
 
-        // TODO: Check if the yarra config file can be found! Otherwise, stop the webgui
+        // Check if the yarra config file can be found! Otherwise, stop the webgui
         if (!fs::exists(serverFilename.toUTF8()))
         {
             std::cout << "ERROR: Can't find YarraServer configuration file " << serverFilename << std::endl;
@@ -104,6 +105,7 @@ void ywConfiguration::loadConfiguration()
         boost::property_tree::ini_parser::read_ini(serverFilename.toUTF8(), serverIni);
         serverName=WString::fromUTF8(serverIni.get<std::string>("Server.Name","Unknown"));
 
+        // Note: Here the full path is assembled as default value (base path + subfolder)
         yarraLogPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Log",WString(yarraPath+yarraLogPath).toUTF8()));
         yarraModesPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Modes",WString(yarraPath+yarraModesPath).toUTF8()));
         yarraQueuePath=WString::fromUTF8(serverIni.get<std::string>("Paths/Queue",WString(yarraPath+yarraQueuePath).toUTF8()));
@@ -111,6 +113,7 @@ void ywConfiguration::loadConfiguration()
         yarraFailPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Fail",WString(yarraPath+yarraFailPath).toUTF8()));
         yarraStoragePath=WString::fromUTF8(serverIni.get<std::string>("Paths/Storage",WString(yarraPath+yarraStoragePath).toUTF8()));
         yarraModulesPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Modules",WString(yarraPath+yarraModulesPath).toUTF8()));
+        yarraModulesUserPath=WString::fromUTF8(serverIni.get<std::string>("Paths/ModulesUser",WString(yarraPath+yarraModulesUserPath).toUTF8()));
 
         configurationValid=true;
     }

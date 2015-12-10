@@ -52,18 +52,23 @@ int main(int argc, char **argv)
     char arg2[] = "--http-address";
     char arg3[] = "0.0.0.0";
     char arg4[] = "--http-port";
-    char arg5[8] = "8080";
+
     // Overwrite the port number with the setting from the configuration file
+    char arg5[8] = "8080";
     strcpy(arg5,configurationInstance.port.toUTF8().data());
 
-    int argCount=6;
-    char* args[6];
+    // Pass path to local configuration file (needed to set maximum allowed upload size)
+    char arg6[] = "--config=wt_config.xml";
+
+    int argCount=7;
+    char* args[7];
     args[0]=argv[0];
     args[1]=arg1;
     args[2]=arg2;
     args[3]=arg3;
     args[4]=arg4;
     args[5]=arg5;
+    args[6]=arg6;
 
     return WRun(argCount, args, &createApplication);
     //return WRun(argc, argv, &createApplication);

@@ -11,6 +11,7 @@ using namespace Wt;
 class ywConfigPageModes;
 class ywConfigPageModeList;
 class ywConfigPageServer;
+class ywConfigPageModules;
 
 
 class ywConfigPage : public Wt::WContainerWidget
@@ -29,9 +30,10 @@ public:
     Wt::WMenu *configMenu;
     Wt::WText* serverStatusLabel;
 
-    ywConfigPageModes* page0;
+    ywConfigPageModes*    page0;
     ywConfigPageModeList* page1;
-    ywConfigPageServer* page2;
+    ywConfigPageServer*   page2;
+    ywConfigPageModules*  pageModules;
 };
 
 

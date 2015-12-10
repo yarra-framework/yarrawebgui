@@ -1,5 +1,6 @@
 #include "yw_configpage.h"
 #include "yw_configpage_ymgenerator.h"
+#include "yw_configpage_modules.h"
 #include "yw_serverinterface.h"
 #include "yw_application.h"
 #include "yw_helper.h"
@@ -44,7 +45,6 @@
 namespace fs = boost::filesystem;
 
 
-
 ywConfigPage::ywConfigPage(ywApplication* parent)
  : WContainerWidget()
 {
@@ -74,19 +74,25 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
     configMenu->setStyleClass("nav nav-pills nav-stacked");
     configMenu->setWidth(200);
 
-    page0=new ywConfigPageModes(this);
-    page1=new ywConfigPageModeList(this);
-    page2=new ywConfigPageServer(this);
-
+    page0=new ywConfigPageModes(this);    
     configMenu->addItem("Reconstruction Modes", page0)->triggered().connect(std::bind([=] () {
         refreshSubpage();
-    }));;
+    }));
+
+    page1=new ywConfigPageModeList(this);
     configMenu->addItem("Mode List", page1)->triggered().connect(std::bind([=] () {
         refreshSubpage();
-    }));;
+    }));
+
+    page2=new ywConfigPageServer(this);
     configMenu->addItem("Server Settings", page2)->triggered().connect(std::bind([=] () {
         refreshSubpage();
-    }));;
+    }));
+
+    pageModules=new ywConfigPageModules(this);
+    configMenu->addItem("Installed Modules", pageModules)->triggered().connect(std::bind([=] () {
+        refreshSubpage();
+    }));
 
     configPageLayout->addWidget(configMenu);
     configPageLayout->addWidget(configContents,1);
@@ -127,6 +133,9 @@ void ywConfigPage::refreshSubpage()
         break;
     case 2:
         page2->refreshEditor();
+        break;
+    case 3:
+        pageModules->refresh();
         break;
     }
 }
