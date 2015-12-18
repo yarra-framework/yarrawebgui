@@ -41,6 +41,9 @@ public:
 
     vector<ywUser*> users;
 
+    bool disableModuleInstallation;
+    bool disableModeEditing;
+
     bool configurationValid;
 
     ywUser* validateUser(WString name, WString password);

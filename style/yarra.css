@@ -345,3 +345,10 @@ h3,
   padding-top: 14px;
 }
 
+
+.Wt-tree .active {
+  background-color: #580F8B;
+}
+
+
+

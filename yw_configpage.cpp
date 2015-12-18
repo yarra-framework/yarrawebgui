@@ -368,6 +368,13 @@ WString ywConfigPageModeList::readModeList()
 
 bool ywConfigPageModeList::writeModeList(WString newConfig)
 {
+    if (parent->app->configuration->disableModeEditing)
+    {
+        Wt::WMessageBox::show("Security Policy", "Modification of modes via the WebGUI has been disabled.", Wt::Ok);
+        return true;
+    }
+
+
     WString fileName=parent->app->configuration->yarraQueuePath+"/YarraModes.cfg";
 
     if (!fs::exists(fileName.toUTF8()))
@@ -613,6 +620,13 @@ void ywConfigPageModes::refresh()
 
 void ywConfigPageModes::deleteMode()
 {
+    if (parent->app->configuration->disableModeEditing)
+    {
+        Wt::WMessageBox::show("Security Policy", "Modification of modes via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
+
+
     if (modeList->count()==0)
     {
         return;
@@ -660,6 +674,13 @@ void ywConfigPageModes::deleteMode()
 
 void ywConfigPageModes::addMode()
 {
+    if (parent->app->configuration->disableModeEditing)
+    {
+        Wt::WMessageBox::show("Security Policy", "Modification of modes via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
+
+
     Wt::WDialog *addDialog = new Wt::WDialog("Add New Mode");
 
     Wt::WPushButton *ok = new Wt::WPushButton("OK", addDialog->footer());
@@ -798,6 +819,13 @@ void ywConfigPageModes::doAddMode(WString name, WString templateMode)
 
 void ywConfigPageModes::saveMode()
 {
+    if (parent->app->configuration->disableModeEditing)
+    {
+        Wt::WMessageBox::show("Security Policy", "Modification of modes via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
+
+
     if (modeList->count()==0)
     {
         return;

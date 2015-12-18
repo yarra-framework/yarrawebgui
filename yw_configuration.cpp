@@ -30,6 +30,9 @@ ywConfiguration::ywConfiguration()
     yarraStoragePath    ="/finished";
     yarraModulesPath    ="/modules";
     yarraModulesUserPath="/modules_user";
+
+    disableModuleInstallation=false;
+    disableModeEditing       =false;
 }
 
 
@@ -86,8 +89,13 @@ void ywConfiguration::loadConfiguration()
             userName=WString::fromUTF8(inifile.get<std::string>( WString("User{1}.Name").arg(userCount+1).toUTF8(),""));
         }
 
+        // Read main settings
         yarraPath=WString::fromUTF8(inifile.get<std::string>("Setup.YarraPath","."));
         port=WString::fromUTF8(inifile.get<std::string>("Setup.Port","8080"));
+
+        // Read optional security settings
+        disableModuleInstallation=inifile.get<bool>("Setup.DisableModuleInstallation",disableModuleInstallation);
+        disableModeEditing       =inifile.get<bool>("Setup.DisableModeEditing",disableModeEditing);
 
         // Now try to read the yarra config file
         boost::property_tree::ptree serverIni;
@@ -106,14 +114,14 @@ void ywConfiguration::loadConfiguration()
         serverName=WString::fromUTF8(serverIni.get<std::string>("Server.Name","Unknown"));
 
         // Note: Here the full path is assembled as default value (base path + subfolder)
-        yarraLogPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Log",WString(yarraPath+yarraLogPath).toUTF8()));
-        yarraModesPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Modes",WString(yarraPath+yarraModesPath).toUTF8()));
-        yarraQueuePath=WString::fromUTF8(serverIni.get<std::string>("Paths/Queue",WString(yarraPath+yarraQueuePath).toUTF8()));
-        yarraWorkPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Work",WString(yarraPath+yarraWorkPath).toUTF8()));
-        yarraFailPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Fail",WString(yarraPath+yarraFailPath).toUTF8()));
-        yarraStoragePath=WString::fromUTF8(serverIni.get<std::string>("Paths/Storage",WString(yarraPath+yarraStoragePath).toUTF8()));
-        yarraModulesPath=WString::fromUTF8(serverIni.get<std::string>("Paths/Modules",WString(yarraPath+yarraModulesPath).toUTF8()));
-        yarraModulesUserPath=WString::fromUTF8(serverIni.get<std::string>("Paths/ModulesUser",WString(yarraPath+yarraModulesUserPath).toUTF8()));
+        yarraLogPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Log",WString(yarraPath+yarraLogPath).toUTF8()));
+        yarraModesPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Modes",WString(yarraPath+yarraModesPath).toUTF8()));
+        yarraQueuePath=WString::fromUTF8(serverIni.get<std::string>("Paths.Queue",WString(yarraPath+yarraQueuePath).toUTF8()));
+        yarraWorkPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Work",WString(yarraPath+yarraWorkPath).toUTF8()));
+        yarraFailPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Fail",WString(yarraPath+yarraFailPath).toUTF8()));
+        yarraStoragePath=WString::fromUTF8(serverIni.get<std::string>("Paths.Storage",WString(yarraPath+yarraStoragePath).toUTF8()));
+        yarraModulesPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Modules",WString(yarraPath+yarraModulesPath).toUTF8()));
+        yarraModulesUserPath=WString::fromUTF8(serverIni.get<std::string>("Paths.ModulesUser",WString(yarraPath+yarraModulesUserPath).toUTF8()));
 
         configurationValid=true;
     }

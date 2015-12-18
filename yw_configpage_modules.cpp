@@ -9,24 +9,45 @@
 
 #include <ZipLib/ZipFile.h>
 
+namespace fs = boost::filesystem;
+
+
+#define LABEL_MODULES_CORE "<span style=\"color: #580F8B;\">Core Modules</span>"
+#define LABEL_MODULES_USER "<span style=\"color: #580F8B;\">User Modules</span>"
+
 
 ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
 {
     parent=pageParent;
     userModulesPath = boost::filesystem::path{parent->app->configuration->yarraModulesUserPath.toUTF8()};
+    coreModulesPath = boost::filesystem::path{parent->app->configuration->yarraModulesPath.toUTF8()};
 
     Wt::WVBoxLayout* subLayout = new Wt::WVBoxLayout();
     this->setLayout(subLayout);
     subLayout->setContentsMargins(0, 0, 0, 0);
 
-    // TODO: Put into scrollarea
+    Wt::WText* head=new Wt::WText("<h3>Installed Yarra Modules</h3>");
+    head->setMargin(6, Wt::Bottom);
+    subLayout->insertWidget(0,head,0);
 
-    folderTree = new Wt::WTree();
-    folderTree->setSelectionMode(Wt::ExtendedSelection);
-    subLayout->insertWidget(0,folderTree,1);
+    moduleTree = new Wt::WTree();
+    moduleTree->setSelectionMode(Wt::SingleSelection);
+    Wt::WScrollArea* scrollArea=new Wt::WScrollArea();
+    scrollArea->setWidget(moduleTree);
+    subLayout->insertWidget(1,scrollArea,1);
+
+    infoText = new Wt::WText();
+    infoText->setText("");
+
+    infoPanel = new Wt::WPanel();
+    infoPanel->setTitle("Information");
+    infoPanel->setMinimumSize(WLength::Auto, 200);
+    infoPanel->setMargin(10, Wt::Top);
+    infoPanel->setCentralWidget(infoText);
+    subLayout->insertWidget(2,infoPanel,0);
 
     // TODO: Does not need to be refreshed during constructed, but better when it becomes active
-    refreshFolderTree();
+    refreshModuleTree();
 
     WContainerWidget* innerBtnContainer=new WContainerWidget();
     innerBtnContainer->setMargin(10, Wt::Top);
@@ -39,8 +60,9 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     uploadModuleBtn->setStyleClass("btn-primary");
     uploadModuleBtn->clicked().connect(this, &ywConfigPageModules::showUploadModuleDialog);
 
-    Wt::WPushButton* deleteBtn=new Wt::WPushButton("Remove", innerBtnContainer);
+    deleteBtn=new Wt::WPushButton("Remove", innerBtnContainer);
     deleteBtn->setStyleClass("btn-primary");
+    deleteBtn->setDisabled(true);
     deleteBtn->clicked().connect(std::bind([=] () {
         deleteSelectedModules();
     }));
@@ -48,7 +70,7 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     Wt::WPushButton* refreshBtn=new Wt::WPushButton("Refresh", innerBtnContainer);
     refreshBtn->setStyleClass("btn");
     refreshBtn->clicked().connect(std::bind([=] () {
-        refreshFolderTree();
+        refreshModuleTree();
     }));
 
     innerLayout->insertWidget(0,uploadModuleBtn,0);
@@ -56,7 +78,35 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     innerLayout->insertWidget(2,refreshBtn,0);
     innerLayout->insertWidget(3,new Wt::WContainerWidget,1);
 
-    subLayout->insertWidget(1,innerBtnContainer,0);
+    subLayout->insertWidget(3,innerBtnContainer,0);
+
+    // React when user clicks on modules
+    moduleTree->itemSelectionChanged().connect(std::bind([=] () {
+        bool deleteBtnDisabled=true;
+
+        if (moduleTree->selectedNodes().size()>0)
+        {
+            WTreeNode* selectedNode=*moduleTree->selectedNodes().begin();
+            bool isUserModule=false;
+
+            // Enable the Remove button only if a user module has been selected
+            if (selectedNode->parentNode()->label()->text()==LABEL_MODULES_USER)
+            {
+                isUserModule=true;
+                deleteBtnDisabled=false;
+            }
+
+            // Update the info text based on the selected module
+            infoText->setText(getModuleInfo(selectedNode->label()->text(),isUserModule));
+        }
+        else
+        {
+            infoText->setText("");
+        }
+
+        deleteBtn->setDisabled(deleteBtnDisabled);
+    }));
+
 }
 
 
@@ -66,27 +116,57 @@ void ywConfigPageModules::refresh()
 }
 
 
-void buildFolderTree(const boost::filesystem::path & path, Wt::WTreeNode * dirNode, bool is_toplevel = false)
+void ywConfigPageModules::buildCoreModuleTree(Wt::WTreeNode* baseNode)
 {
-    // TODO: Devide into sections: Core Modules and User Modules
+    // TODO: Parse module folder for manifest files
+
+    Wt::WTreeNode *node = new Wt::WTreeNode("PACSTransfer");
+    baseNode->addChildNode(node);
+    node->setSelectable(true);
+
+    Wt::WTreeNode *node2 = new Wt::WTreeNode("DriveTransfer");
+    baseNode->addChildNode(node2);
+    node2->setSelectable(true);
+}
+
+
+
+void ywConfigPageModules::buildUserModuleTree(Wt::WTreeNode* baseNode)
+{
+    // Check if path exists, if not create error message
+    bool pathError=false;
+    try
+    {
+        if (!fs::exists(userModulesPath) || !fs::is_directory(userModulesPath))
+        {
+            pathError=true;
+        }
+    }
+    catch(const std::exception & e)
+    {
+        pathError=true;
+    }
+
+    if (pathError)
+    {
+        Wt::WTreeNode *node = new Wt::WTreeNode("ERROR: Can't access path "+WString(userModulesPath.generic_string()));
+        baseNode->addChildNode(node);
+        node->setSelectable(false);
+        return;
+    }
 
     try
     {
-
-        for (auto dir_entry = boost::filesystem::directory_iterator(path);
+        for (auto dir_entry = boost::filesystem::directory_iterator(userModulesPath);
              dir_entry != boost::filesystem::directory_iterator(); ++dir_entry)
         {
             bool is_dir = boost::filesystem::is_directory(dir_entry->path());
-            Wt::WTreeNode *node = new Wt::WTreeNode(dir_entry->path().filename().string(),
-                 is_toplevel ? new Wt::WIconPair("icons/engine-24.png", "icons/engine-24.png", false)
-                 : is_dir ? new Wt::WIconPair("icons/yellow-folder-closed.png", "icons/yellow-folder-open.png", false)
-                 : nullptr);
 
-            dirNode->addChildNode(node);
-            node->setSelectable(is_toplevel);
-            node->expand();
-            if (is_dir) {
-                buildFolderTree(dir_entry->path(), node);
+            if (is_dir)
+            {
+                Wt::WTreeNode *node = new Wt::WTreeNode(dir_entry->path().filename().string());
+                baseNode->addChildNode(node);
+                node->setSelectable(true);
             }
         }
     }
@@ -97,30 +177,54 @@ void buildFolderTree(const boost::filesystem::path & path, Wt::WTreeNode * dirNo
 }
 
 
-void ywConfigPageModules::refreshFolderTree()
+void ywConfigPageModules::refreshModuleTree()
 {
-    Wt::WTreeNode *root = new Wt::WTreeNode("User Modules");
-    //root->setStyleClass("example-tree");
-    folderTree->setTreeRoot(root);
+    Wt::WTreeNode *root = new Wt::WTreeNode("Yarra Modules");
 
-    root->label()->setTextFormat(Wt::PlainText);
+    moduleTree->setTreeRoot(root);
+
     root->setLoadPolicy(Wt::WTreeNode::NextLevelLoading);
+    root->setSelectable(false);
+    root->setNodeVisible(false);
 
-    buildFolderTree(userModulesPath, root, true);
+    Wt::WTreeNode *coreNode = new Wt::WTreeNode(LABEL_MODULES_CORE);
+    root->addChildNode(coreNode);
+    coreNode->setSelectable(false);
+    coreNode->setChildCountPolicy(WTreeNode::Enabled);
+    buildCoreModuleTree(coreNode);
+
+    Wt::WTreeNode *userNode = new Wt::WTreeNode(LABEL_MODULES_USER);
+    root->addChildNode(userNode);
+    userNode->setSelectable(false);
+    userNode->setChildCountPolicy(WTreeNode::Enabled);
+    buildUserModuleTree(userNode);
 
     root->expand();
+    coreNode->expand();
+    userNode->expand();
 }
 
 
 void ywConfigPageModules::deleteSelectedModules()
 {
-    // TODO: Make sure that the server is offline
+    if (parent->app->configuration->disableModuleInstallation)
+    {
+        Wt::WMessageBox::show("Security Policy", "Installation of modules via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
+
+    if (!isServerOffline())
+    {
+        Wt::WMessageBox::show("Server Online", "The server needs to be offline before modules can be removed.", Wt::Ok);
+        return;
+    }
+
     // TODO: Make sure that nobody else is deleting module -- add lock mechanism
 
     if (Wt::WMessageBox::show("Uninstall Module",
-        "You are about to delete all selected modules. Are you sure?",  Wt::Ok | Wt::Cancel) == Wt::Ok)
+        "This operation will uninstall the selected module from the server. Are you sure?",  Wt::Ok | Wt::Cancel) == Wt::Ok)
     {
-        for (const auto & module : folderTree->selectedNodes())
+        for (const auto & module : moduleTree->selectedNodes())
         {
             auto modulePath = userModulesPath / module->label()->text().toUTF8();
 
@@ -133,14 +237,25 @@ void ywConfigPageModules::deleteSelectedModules()
                 // TODO: Show error message
             }
         }
-        refreshFolderTree();
+        refreshModuleTree();
     }
 }
 
 
 void ywConfigPageModules::showUploadModuleDialog()
 {
-    // TODO: Make sure that the server is offline
+    if (parent->app->configuration->disableModuleInstallation)
+    {
+        Wt::WMessageBox::show("Security Policy", "Installation of modules via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
+
+    if (!isServerOffline())
+    {
+        Wt::WMessageBox::show("Server Online", "The server needs to be offline before modules can be installed.", Wt::Ok);
+        return;
+    }
+
     // TODO: Make sure that nobody else is currently uploading -- add lock mechanism.
 
     Wt::WDialog* uploadModuleDialog = new WDialog("Upload Module");
@@ -180,7 +295,7 @@ void ywConfigPageModules::showUploadModuleDialog()
     }));
 
 
-    // React to a succesfull uploadModule.
+    // React to succesfull upload
     uploadModule->uploaded().connect(std::bind([=] () {
 
         std::string uploadedFileName = uploadModule->spoolFileName();
@@ -214,6 +329,7 @@ void ywConfigPageModules::showUploadModuleDialog()
                 auto zipArchive = ZipFile::Open(uploadedFileName);
 
                 // TODO: Error handling!
+                // TODO: Check if enough space for extracting files exists
 
                 for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
                 {
@@ -230,13 +346,13 @@ void ywConfigPageModules::showUploadModuleDialog()
                 }
             }
 
-            refreshFolderTree();
+            refreshModuleTree();
             Wt::WMessageBox::show("Module Upload", "Module '" + moduleName.string()
                                 + (updated ?  "' updated successfully" : "' installed successfully"), Wt::Ok);
         }
         catch(const std::exception & e)
         {
-            refreshFolderTree();
+            refreshModuleTree();
             Wt::WMessageBox::show("Module Upload", "Module '" + moduleName.string() + "' installation failed: " +e.what(), Wt::Ok);
         }
         uploadModuleDialog->accept();
@@ -249,3 +365,28 @@ void ywConfigPageModules::showUploadModuleDialog()
     uploadModuleDialog->show();
 }
 
+
+bool ywConfigPageModules::isServerOffline()
+{
+    return !ywServerInterface::isServerRunning(parent->app->configuration->yarraPath);
+}
+
+
+WString ywConfigPageModules::getModuleInfo(Wt::WString name, bool isUserModule)
+{
+    WString moduleInfo="";
+
+    if (isUserModule)
+    {
+        moduleInfo="Info for User Module: ";
+    }
+    else
+    {
+        moduleInfo="Info for Core Module: ";
+    }
+    moduleInfo+=name;
+
+    // TODO: Read information from manifest file
+
+    return moduleInfo;
+}

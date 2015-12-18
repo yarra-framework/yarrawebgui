@@ -7,10 +7,14 @@
 #include <Wt/WTree>
 #include <Wt/WTreeNode>
 #include <Wt/WIconPair>
+#include <Wt/WTreeNode>
+#include <Wt/WPanel>
 
 // Needed to get avoid of "undefined reference to `boost::filesystem::detail::copy_file()`"
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 #include <boost/filesystem.hpp>
+
+using namespace Wt;
 
 
 class ywConfigPage;
@@ -21,14 +25,27 @@ public:
     ywConfigPageModules(ywConfigPage* pageParent);
 
     ywConfigPage* parent;
-    Wt::WTree *folderTree;
+    Wt::WTree* moduleTree;
+    Wt::WPanel* infoPanel;
+    Wt::WText* infoText;
+    Wt::WPushButton* deleteBtn;
     boost::filesystem::path userModulesPath;
+    boost::filesystem::path coreModulesPath;
+
 
     void showUploadModuleDialog();
-    void refreshFolderTree();
+    void refreshModuleTree();
     void deleteSelectedModules();
 
     void refresh();
+
+    bool isServerOffline();
+
+    void buildCoreModuleTree(Wt::WTreeNode* baseNode);
+    void buildUserModuleTree(Wt::WTreeNode* baseNode);
+
+    Wt::WString getModuleInfo(Wt::WString name, bool isUserModule);
+
 };
 
 
