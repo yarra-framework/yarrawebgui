@@ -84,7 +84,8 @@ SOURCES += main.cpp \
     yw_queuepage.cpp \
     yw_helper.cpp \
     yw_configpage_ymgenerator.cpp \
-    yw_configpage_modules.cpp
+    yw_configpage_modules.cpp \
+    yw_modulemanifest.cpp
 
 HEADERS += \
     yw_configuration.h \
@@ -98,4 +99,5 @@ HEADERS += \
     yw_queuepage.h \
     yw_helper.h \
     yw_configpage_ymgenerator.h \
-    yw_configpage_modules.h
+    yw_configpage_modules.h \
+    yw_modulemanifest.h

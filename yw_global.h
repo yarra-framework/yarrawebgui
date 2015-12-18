@@ -13,6 +13,9 @@
 #define YW_EXT_LOCK      ".lock"
 #define YW_EXT_MODE      ".mode"
 
+#define YW_EXT_MANIFEST  ".ymf"
+
+
 #include <Wt/WString>
 
 // String list, as used at various places in the code

@@ -118,15 +118,50 @@ void ywConfigPageModules::refresh()
 
 void ywConfigPageModules::buildCoreModuleTree(Wt::WTreeNode* baseNode)
 {
-    // TODO: Parse module folder for manifest files
+    // Check if path exists, if not create error message
+    bool pathError=false;
+    try
+    {
+        if (!fs::exists(coreModulesPath) || !fs::is_directory(coreModulesPath))
+        {
+            pathError=true;
+        }
+    }
+    catch(const std::exception & e)
+    {
+        pathError=true;
+    }
 
-    Wt::WTreeNode *node = new Wt::WTreeNode("PACSTransfer");
-    baseNode->addChildNode(node);
-    node->setSelectable(true);
+    if (pathError)
+    {
+        Wt::WTreeNode *node = new Wt::WTreeNode("ERROR: Can't access path "+WString(coreModulesPath.generic_string()));
+        baseNode->addChildNode(node);
+        node->setSelectable(false);
+        return;
+    }
 
-    Wt::WTreeNode *node2 = new Wt::WTreeNode("DriveTransfer");
-    baseNode->addChildNode(node2);
-    node2->setSelectable(true);
+    // For the core modules, search for manifest files in the modules folder
+    try
+    {
+        const string& ext_manifest =YW_EXT_MANIFEST;
+
+        for (auto dir_entry = boost::filesystem::directory_iterator(coreModulesPath);
+             dir_entry != boost::filesystem::directory_iterator(); ++dir_entry)
+        {
+            bool is_manifest = (boost::filesystem::is_regular_file(dir_entry->path()) && (dir_entry->path().extension()==ext_manifest));
+
+            if (is_manifest)
+            {
+                Wt::WTreeNode *node = new Wt::WTreeNode(dir_entry->path().stem().string());
+                baseNode->addChildNode(node);
+                node->setSelectable(true);
+            }
+        }
+    }
+    catch(const std::exception & e)
+    {
+        // TODO: What to do with exceptions?
+    }
 }
 
 
@@ -155,6 +190,7 @@ void ywConfigPageModules::buildUserModuleTree(Wt::WTreeNode* baseNode)
         return;
     }
 
+    // For the user modules, show all existing subfolders in the user module directory
     try
     {
         for (auto dir_entry = boost::filesystem::directory_iterator(userModulesPath);
@@ -190,13 +226,13 @@ void ywConfigPageModules::refreshModuleTree()
     Wt::WTreeNode *coreNode = new Wt::WTreeNode(LABEL_MODULES_CORE);
     root->addChildNode(coreNode);
     coreNode->setSelectable(false);
-    coreNode->setChildCountPolicy(WTreeNode::Enabled);
+    //coreNode->setChildCountPolicy(WTreeNode::Enabled);
     buildCoreModuleTree(coreNode);
 
     Wt::WTreeNode *userNode = new Wt::WTreeNode(LABEL_MODULES_USER);
     root->addChildNode(userNode);
     userNode->setSelectable(false);
-    userNode->setChildCountPolicy(WTreeNode::Enabled);
+    //userNode->setChildCountPolicy(WTreeNode::Enabled);
     buildUserModuleTree(userNode);
 
     root->expand();
