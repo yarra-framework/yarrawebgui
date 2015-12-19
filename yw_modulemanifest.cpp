@@ -18,7 +18,6 @@ ywModuleManifest::ywModuleManifest()
 }
 
 
-
 bool ywModuleManifest::readManifest(WString filename)
 {
     boost::property_tree::ptree manifestFile;
@@ -61,17 +60,29 @@ WString ywModuleManifest::renderInformation()
 {
     WString infoString="";
 
-    WString displayName=name;
-    if (displayName.empty())
-    {
+    infoString= "<div style=\"margin-bottom: 6px; \"><strong>"+name+"</strong><br /></div>";
 
+    if (!description.empty())
+    {
+        infoString+="<div style=\"margin-bottom: 6px; \"><i>"+description+"</i></div>";
     }
 
-    infoString= "<strong>"+displayName+"</strong><br />";
     infoString+="<table>";
-    infoString+="<tr><td>Version:</td><td>"+version+"</td></tr>";
-    infoString+="</table>";
 
+    if (!version.empty())
+    {
+        infoString+="<tr><td style=\"padding-right: 6px;\">Version: </td><td>"+version+"</td></tr>";
+    }
+    if (!author.empty())
+    {
+        infoString+="<tr><td style=\"padding-right: 6px;\" style=\"padding-right: 6px;\">Author: </td><td>"+author+"</td></tr>";
+    }
+    if (!homepage.empty())
+    {
+        infoString+="<tr><td style=\"padding-right: 6px;\">Homepage: </td><td><a href=\"http://"+homepage+"\"  target=\"_blank\">"+homepage+"</a></td></tr>";
+    }
+
+    infoString+="</table>";
 
     return infoString;
 }

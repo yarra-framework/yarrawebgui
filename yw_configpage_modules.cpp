@@ -107,13 +107,12 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
 
         deleteBtn->setDisabled(deleteBtnDisabled);
     }));
-
 }
 
 
 void ywConfigPageModules::refresh()
 {
-    //refresh();
+    refreshModuleTree();
 }
 
 
@@ -227,13 +226,11 @@ void ywConfigPageModules::refreshModuleTree()
     Wt::WTreeNode *coreNode = new Wt::WTreeNode(LABEL_MODULES_CORE);
     root->addChildNode(coreNode);
     coreNode->setSelectable(false);
-    //coreNode->setChildCountPolicy(WTreeNode::Enabled);
     buildCoreModuleTree(coreNode);
 
     Wt::WTreeNode *userNode = new Wt::WTreeNode(LABEL_MODULES_USER);
     root->addChildNode(userNode);
     userNode->setSelectable(false);
-    //userNode->setChildCountPolicy(WTreeNode::Enabled);
     buildUserModuleTree(userNode);
 
     root->expand();
@@ -261,6 +258,8 @@ void ywConfigPageModules::deleteSelectedModules()
     if (Wt::WMessageBox::show("Uninstall Module",
         "This operation will uninstall the selected module from the server. Are you sure?",  Wt::Ok | Wt::Cancel) == Wt::Ok)
     {
+        bool error=false;
+
         for (const auto & module : moduleTree->selectedNodes())
         {
             auto modulePath = userModulesPath / module->label()->text().toUTF8();
@@ -271,9 +270,15 @@ void ywConfigPageModules::deleteSelectedModules()
             }
             catch(const std::exception & e)
             {
-                // TODO: Show error message
+                error=true;
             }
         }
+
+        if (error)
+        {
+            Wt::WMessageBox::show("Error", "Removing the module was not possible. Check file permissions.", Wt::Ok);
+        }
+
         refreshModuleTree();
     }
 }
@@ -336,21 +341,59 @@ void ywConfigPageModules::showUploadModuleDialog()
     uploadModule->uploaded().connect(std::bind([=] () {
 
         std::string uploadedFileName = uploadModule->spoolFileName();
-        boost::filesystem::path originalModuleName(uploadModule->clientFileName().toUTF8());
 
-        // TODO: Check if the zip file contains a manifest file
-        // TODO: Extract the module name from the manifest file
+        fs::path originalModuleName(uploadModule->clientFileName().toUTF8());
+        std::string moduleName = originalModuleName.stem().generic_string();
 
-        auto moduleName = originalModuleName.stem();
-        auto modulePath = userModulesPath / moduleName;
-        bool updated = false;
         try
         {
+            auto zipArchive = ZipFile::Open(uploadedFileName);
+
+            // Check is ZIP file contains manifest file and identify module name
+            bool validManifestFound=false;
+            bool multipleManifests=false;
+            size_t requiredSize=0;
+
+            for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
+            {
+                std::string fileEntry = zipArchive->GetEntry(i)->GetName();
+                requiredSize += zipArchive->GetEntry(i)->GetSize();
+
+                int extPosition=fileEntry.find_last_of(YW_EXT_MANIFEST);
+                if ((extPosition!=string::npos) && (extPosition==fileEntry.length()-4))
+                {
+                    if (validManifestFound)
+                    {
+                        // A manifest file has already been found previously. Can't be a valid module
+                        validManifestFound=false;
+                        multipleManifests=true;
+                        break;
+                    }
+
+                    // Extract name of manifest file to be used as module name
+                    moduleName=fileEntry.substr(0,fileEntry.length()-4);
+                    validManifestFound=true;
+                }
+            }
+
+            if (!validManifestFound)
+            {
+                WString errorReason=multipleManifests ? "contains invalid manifest files" : "does not contain manifest file";
+                Wt::WMessageBox::show("Invalid Module", "The uploaded file is not a valid Yarra Module (" + errorReason + ").", Wt::Ok);
+                return;
+            }
+
+            fs::path modulePath = userModulesPath / moduleName;
+
+            // TODO: Check if space available at modulePath is at least requiredSize
+
+            // Check is module is already installed
+            bool updated=false;
             if (boost::filesystem::is_directory(modulePath))
             {
                 if (Wt::WMessageBox::show("Module Upload",
-                    "A module with the name `" + moduleName.string() + "` exists. Do you want to overwrite it?",
-                    Wt::Ok | Wt::Cancel) != Wt::Ok)
+                                          "A module with the name `" + moduleName + "` exists. Do you want to overwrite it?",
+                                          Wt::Ok | Wt::Cancel) != Wt::Ok)
                 {
                     uploadModuleDialog->reject();
                     return;
@@ -362,42 +405,46 @@ void ywConfigPageModules::showUploadModuleDialog()
             boost::filesystem::create_directories(modulePath);
 
             // Extract and install ZIP file
+            for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
             {
-                auto zipArchive = ZipFile::Open(uploadedFileName);
+                // TODO: Error handling for file permissions etc
 
-                // TODO: Error handling!
-                // TODO: Check if enough space for extracting files exists
+                auto zipEntry = zipArchive->GetEntry(i);
+                auto outFilePath = modulePath / zipEntry->GetFullName();
 
-                for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
+                // Create needed folder
+                boost::filesystem::create_directories(outFilePath.parent_path());
+
+                if (!boost::filesystem::is_directory(outFilePath))
                 {
-                    auto zipEntry = zipArchive->GetEntry(i);
-                    auto outFilePath = modulePath / zipEntry->GetFullName();
-                    boost::filesystem::create_directories(outFilePath.parent_path());
-                    if (!boost::filesystem::is_directory(outFilePath))
-                    {
-                        ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), outFilePath.string());
-                        wApp->log("notice") <<  zipEntry->GetFullName() << " -> " << std::hex << uint32_t(zipEntry->GetAttributes());
-                        boost::filesystem::permissions( outFilePath,
-                            boost::filesystem::perms((uint32_t(zipEntry->GetAttributes()) >> 16) & 0777));
-                    }
+                    // Extract file from archive
+                    ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), outFilePath.string());
+
+                    //wApp->log("notice") <<  zipEntry->GetFullName() << " -> " << std::hex << uint32_t(zipEntry->GetAttributes());
+
+                    // Set file permission to allow execution of binaries
+                    boost::filesystem::permissions( outFilePath,
+                        boost::filesystem::perms((uint32_t(zipEntry->GetAttributes()) >> 16) & 0700));
                 }
             }
 
             refreshModuleTree();
-            Wt::WMessageBox::show("Module Upload", "Module '" + moduleName.string()
+            Wt::WMessageBox::show("Module Upload", "Module '" + moduleName
                                 + (updated ?  "' updated successfully" : "' installed successfully"), Wt::Ok);
         }
         catch(const std::exception & e)
         {
             refreshModuleTree();
-            Wt::WMessageBox::show("Module Upload", "Module '" + moduleName.string() + "' installation failed: " +e.what(), Wt::Ok);
+            Wt::WMessageBox::show("Error", "Installation of module '" + moduleName + "' failed. Reason: " +e.what(), Wt::Ok);
         }
         uploadModuleDialog->accept();
     }));
 
+
     uploadModuleDialog->finished().connect(std::bind([=] () {
         delete uploadModuleDialog;
     }));
+
 
     uploadModuleDialog->show();
 }
