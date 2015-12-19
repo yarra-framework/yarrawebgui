@@ -2,6 +2,7 @@
 #include "yw_configpage.h"
 #include "yw_application.h"
 #include "yw_helper.h"
+#include "yw_modulemanifest.h"
 
 #include <Wt/WMessageBox>
 #include <Wt/WHBoxLayout>
@@ -411,18 +412,27 @@ bool ywConfigPageModules::isServerOffline()
 WString ywConfigPageModules::getModuleInfo(Wt::WString name, bool isUserModule)
 {
     WString moduleInfo="";
+    WString manifestFile=name+YW_EXT_MANIFEST;
 
     if (isUserModule)
     {
-        moduleInfo="Info for User Module: ";
+        manifestFile=userModulesPath.generic_string()+"/"+name+"/"+manifestFile;
     }
     else
     {
-        moduleInfo="Info for Core Module: ";
+        manifestFile=coreModulesPath.generic_string()+"/"+manifestFile;
     }
-    moduleInfo+=name;
 
-    // TODO: Read information from manifest file
+    // Read information from manifest file using helper class
+    ywModuleManifest manifest;
+    if (!manifest.readManifest(manifestFile))
+    {
+        moduleInfo="Module information not available.";
+    }
+    else
+    {
+        moduleInfo=manifest.renderInformation();
+    }
 
     return moduleInfo;
 }
