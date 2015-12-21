@@ -317,8 +317,11 @@ void ywConfigPageModules::showUploadModuleDialog()
 
     contentLayout->addWidget(uploadModule);
     contentLayout->addStretch(1);
-    uploadModuleDialog->contents()->setLayout(contentLayout,Wt::AlignTop);
+    uploadModuleDialog->contents()->setLayout(contentLayout);
 
+    uploadModule->changed().connect(std::bind([=] () {
+        uploadModule->upload();
+    }));
 
     Wt::WPushButton *uploadBtn = new Wt::WPushButton("Upload", uploadModuleDialog->footer());
     uploadBtn->disable();
@@ -359,7 +362,9 @@ void ywConfigPageModules::showUploadModuleDialog()
                 std::string fileEntry = zipArchive->GetEntry(i)->GetName();
                 requiredSize += zipArchive->GetEntry(i)->GetSize();
 
-                int extPosition=fileEntry.find_last_of(YW_EXT_MANIFEST);
+                std::string searchString = YW_EXT_MANIFEST;
+                size_t extPosition=fileEntry.find(searchString);
+
                 if ((extPosition!=string::npos) && (extPosition==fileEntry.length()-4))
                 {
                     if (validManifestFound)
@@ -380,6 +385,7 @@ void ywConfigPageModules::showUploadModuleDialog()
             {
                 WString errorReason=multipleManifests ? "contains invalid manifest files" : "does not contain manifest file";
                 Wt::WMessageBox::show("Invalid Module", "The uploaded file is not a valid Yarra Module (" + errorReason + ").", Wt::Ok);
+                uploadModuleDialog->reject();
                 return;
             }
 
@@ -391,8 +397,8 @@ void ywConfigPageModules::showUploadModuleDialog()
             bool updated=false;
             if (boost::filesystem::is_directory(modulePath))
             {
-                if (Wt::WMessageBox::show("Module Upload",
-                                          "A module with the name `" + moduleName + "` exists. Do you want to overwrite it?",
+                if (Wt::WMessageBox::show("Already Installed",
+                                          "A module with name `" + moduleName + "` is already installed. Do you want to overwrite it?",
                                           Wt::Ok | Wt::Cancel) != Wt::Ok)
                 {
                     uploadModuleDialog->reject();
