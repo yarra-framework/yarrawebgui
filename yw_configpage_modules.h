@@ -45,6 +45,7 @@ public:
     void buildUserModuleTree(Wt::WTreeNode* baseNode);
 
     Wt::WString getModuleInfo(Wt::WString name, bool isUserModule);
+    bool isSufficientDiskSpaceAvailable(size_t neededSpace);
 
 };
 

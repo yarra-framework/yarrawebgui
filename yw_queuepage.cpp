@@ -134,7 +134,9 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     button->setMargin(2);
     button->clicked().connect(this, &ywQueuePage::refreshLists);
 
-
+    Wt::WText* heading=new Wt::WText("<h3>Task Queue</h3>");
+    heading->setMargin(6, Wt::Bottom);
+    queuePageLayout->addWidget(heading);
     queuePageLayout->addWidget(tabWidget,1);
     queuePageLayout->addWidget(btnContainer);
 

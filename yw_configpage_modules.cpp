@@ -10,6 +10,8 @@
 
 #include <ZipLib/ZipFile.h>
 
+#include <sys/statvfs.h>
+
 namespace fs = boost::filesystem;
 
 
@@ -47,8 +49,8 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     infoPanel->setCentralWidget(infoText);
     subLayout->insertWidget(2,infoPanel,0);
 
-    // TODO: Does not need to be refreshed during constructed, but better when it becomes active
-    refreshModuleTree();
+    // Does not need to be refreshed during constructor. Updated via Refresh() when tab becomes visible
+    // refreshModuleTree();
 
     WContainerWidget* innerBtnContainer=new WContainerWidget();
     innerBtnContainer->setMargin(10, Wt::Top);
@@ -160,7 +162,7 @@ void ywConfigPageModules::buildCoreModuleTree(Wt::WTreeNode* baseNode)
     }
     catch(const std::exception & e)
     {
-        // TODO: What to do with exceptions?
+        // TODO: Add error reporting
     }
 }
 
@@ -208,7 +210,7 @@ void ywConfigPageModules::buildUserModuleTree(Wt::WTreeNode* baseNode)
     }
     catch(const std::exception & e)
     {
-        // TODO: What to do with exceptions?
+        // TODO: Add error reporting
     }
 }
 
@@ -256,7 +258,8 @@ void ywConfigPageModules::deleteSelectedModules()
     // TODO: Make sure that nobody else is deleting module -- add lock mechanism
 
     if (Wt::WMessageBox::show("Uninstall Module",
-        "This operation will uninstall the selected module from the server. Are you sure?",  Wt::Ok | Wt::Cancel) == Wt::Ok)
+                              "This operation will uninstall the selected module from the server. Are you sure?",
+                              Wt::Yes | Wt::No) == Wt::Yes)
     {
         bool error=false;
 
@@ -319,18 +322,12 @@ void ywConfigPageModules::showUploadModuleDialog()
     contentLayout->addStretch(1);
     uploadModuleDialog->contents()->setLayout(contentLayout);
 
+    // Automatically launch upload after selecting file
     uploadModule->changed().connect(std::bind([=] () {
         uploadModule->upload();
     }));
 
-    Wt::WPushButton *uploadBtn = new Wt::WPushButton("Upload", uploadModuleDialog->footer());
-    uploadBtn->disable();
-    uploadModule->changed().connect(uploadBtn, &Wt::WPushButton::enable);
-    uploadBtn->clicked().connect(std::bind([=] () {
-        uploadModule->upload();
-    }));
-
-    Wt::WPushButton *closeBtn = new Wt::WPushButton("Close", uploadModuleDialog->footer());
+    Wt::WPushButton *closeBtn = new Wt::WPushButton("Cancel", uploadModuleDialog->footer());
     closeBtn->setDefault(true);
     closeBtn->clicked().connect(uploadModuleDialog, &Wt::WDialog::reject);
 
@@ -391,7 +388,13 @@ void ywConfigPageModules::showUploadModuleDialog()
 
             fs::path modulePath = userModulesPath / moduleName;
 
-            // TODO: Check if space available at modulePath is at least requiredSize
+            // Check if space available at modulePath is at least requiredSize
+            if (!isSufficientDiskSpaceAvailable(requiredSize))
+            {
+                Wt::WMessageBox::show("Insufficient Disk Space", "There is not enough free space available to install the module.", Wt::Ok);
+                uploadModuleDialog->reject();
+                return;
+            }
 
             // Check is module is already installed
             bool updated=false;
@@ -489,3 +492,33 @@ WString ywConfigPageModules::getModuleInfo(Wt::WString name, bool isUserModule)
 
     return moduleInfo;
 }
+
+
+bool ywConfigPageModules::isSufficientDiskSpaceAvailable(size_t neededSpace)
+{
+    struct statvfs64 fiData;
+    __fsblkcnt64_t sizeAvailable=0;
+
+    if((statvfs64(userModulesPath.generic_string().c_str(),&fiData)) < 0)
+    {
+        // statvfs call failed, assuming there is enough space
+        return true;
+    }
+    else
+    {
+        sizeAvailable=fiData.f_bsize*fiData.f_bavail;
+
+        //std::cout << "Required disk space: " << neededSpace << std::endl;
+        //std::cout << "Available disk space: " << sizeAvailable << std::endl;
+
+        if (neededSpace>sizeAvailable)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+}
+

@@ -168,8 +168,12 @@ ywConfigPageServer::ywConfigPageServer(ywConfigPage* pageParent)
     this->setLayout(subLayout);
     subLayout->setContentsMargins(0, 0, 0, 0);
 
+    Wt::WText* heading=new Wt::WText("<h3>Server Settings</h3>");
+    heading->setMargin(6, Wt::Bottom);
+    subLayout->insertWidget(0,heading,0);
+
     editor = new Wt::WTextArea();
-    subLayout->insertWidget(0,editor,1);
+    subLayout->insertWidget(1,editor,1);
     editor->setJavaScriptMember("spellcheck","false");
 
     WContainerWidget* innerBtnContainer=new WContainerWidget();
@@ -198,7 +202,7 @@ ywConfigPageServer::ywConfigPageServer(ywConfigPage* pageParent)
 
     refreshEditor();
 
-    subLayout->insertWidget(1,innerBtnContainer,0);
+    subLayout->insertWidget(2,innerBtnContainer,0);
 }
 
 
@@ -287,6 +291,10 @@ ywConfigPageModeList::ywConfigPageModeList(ywConfigPage* pageParent)
     this->setLayout(subLayout);
     subLayout->setContentsMargins(0, 0, 0, 0);
 
+    Wt::WText* heading=new Wt::WText("<h3>Mode List</h3>");
+    heading->setMargin(6, Wt::Bottom);
+    subLayout->insertWidget(0,heading,0);
+
     Wt::WText* infoLabel = new Wt::WText();
     infoLabel->setInline(false);
     infoLabel->setTextFormat(Wt::XHTMLUnsafeText);
@@ -297,10 +305,10 @@ ywConfigPageModeList::ywConfigPageModeList(ywConfigPage* pageParent)
         parent->configMenu->select(0);
     }));
     infoLabel->decorationStyle().setCursor(PointingHandCursor);
-    subLayout->insertWidget(0,infoLabel,0);
+    subLayout->insertWidget(1,infoLabel,0);
 
     editor = new Wt::WTextArea();
-    subLayout->insertWidget(1,editor,1);
+    subLayout->insertWidget(2,editor,1);
     editor->setJavaScriptMember("spellcheck","false");
 
     WContainerWidget* innerBtnContainer=new WContainerWidget();
@@ -328,7 +336,7 @@ ywConfigPageModeList::ywConfigPageModeList(ywConfigPage* pageParent)
 
     refreshEditor();
 
-    subLayout->insertWidget(2,innerBtnContainer,0);
+    subLayout->insertWidget(3,innerBtnContainer,0);
 }
 
 
@@ -455,14 +463,17 @@ ywConfigPageModes::ywConfigPageModes(ywConfigPage* pageParent)
     this->setLayout(subLayout);
     subLayout->setContentsMargins(0, 0, 0, 0);
 
+    Wt::WText* heading=new Wt::WText("<h3>Reconstruction Modes</h3>");
+    heading->setMargin(6, Wt::Bottom);
+    subLayout->insertWidget(0,heading,0);
+
     modeList=new Wt::WComboBox();
     modeList->activated().connect(this, &ywConfigPageModes::showMode);
     modeList->addStyleClass("combo");
-
-    subLayout->insertWidget(0,modeList,0);
+    subLayout->insertWidget(1,modeList,0);
 
     editor = new Wt::WTextArea();
-    subLayout->insertWidget(1,editor,1);
+    subLayout->insertWidget(2,editor,1);
     editor->setJavaScriptMember("spellcheck","false");
 
     WContainerWidget* innerBtnContainer=new WContainerWidget();
@@ -516,7 +527,7 @@ ywConfigPageModes::ywConfigPageModes(ywConfigPage* pageParent)
     innerLayout->insertWidget(5,modeListBtn,0);
     innerLayout->insertWidget(6,helpBtn,0);
 
-    subLayout->insertWidget(2,innerBtnContainer,0);
+    subLayout->insertWidget(3,innerBtnContainer,0);
 
     refreshModes();
     showMode(0);
