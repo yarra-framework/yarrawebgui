@@ -969,7 +969,11 @@ void ywConfigPageModes::showHelp()
                       </tr> \
                       <tr> \
                       <td>%bd</td> \
-                      <td>Directory where the binaries of the modules are located (usually yarra/modules)</td> \
+                      <td>Directory where the binaries of the core modules are located (usually yarra/modules)</td> \
+                      </tr> \
+                      <tr> \
+                      <td>%bu</td> \
+                      <td>Directory where binaries of user-installed modules are located (usually yarra/modules_user)</td> \
                       </tr> \
                       <tr> \
                       <td>%md</td> \
@@ -1017,7 +1021,7 @@ void ywConfigPageModes::showHelp()
 
     scrollArea->setWidget(infoText);
 
-    infoDialog->resize(700,WLength(80,Wt::WLength::Percentage));
+    infoDialog->resize(720,WLength(80,Wt::WLength::Percentage));
     infoDialog->show();
 }
 
