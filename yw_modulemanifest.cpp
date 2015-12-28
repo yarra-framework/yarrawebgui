@@ -28,14 +28,21 @@ bool ywModuleManifest::readManifest(WString filename)
         return false;
     }
 
-    boost::property_tree::ini_parser::read_ini(filename.toUTF8(), manifestFile);
+    try
+    {
+        boost::property_tree::ini_parser::read_ini(filename.toUTF8(), manifestFile);
 
-    name=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Name",WString(name).toUTF8()));
-    version=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Version",WString(version).toUTF8()));
-    author=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Author",WString(author).toUTF8()));
-    description=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Description",WString(description).toUTF8()));
-    homepage=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Homepage",WString(homepage).toUTF8()));
-    downloadURL=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.DDownloadURL",WString(downloadURL).toUTF8()));
+        name=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Name",WString(name).toUTF8()));
+        version=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Version",WString(version).toUTF8()));
+        author=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Author",WString(author).toUTF8()));
+        description=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Description",WString(description).toUTF8()));
+        homepage=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Homepage",WString(homepage).toUTF8()));
+        downloadURL=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.DDownloadURL",WString(downloadURL).toUTF8()));
+    }
+    catch(const std::exception & e)
+    {
+        return false;
+    }
 
     // If no name is provided in the manifest, use the filename
     if (name.empty())

@@ -429,14 +429,22 @@ void ywConfigPageModules::showUploadModuleDialog()
                     // Extract file from archive
                     ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), outFilePath.string());
 
-                    //wApp->log("notice") <<  zipEntry->GetFullName() << " -> " << std::hex << uint32_t(zipEntry->GetAttributes());
-
                     // Set file permission to allow execution of binaries
-                    /*
-                    // TODO: Only change permissions if execute flag has been set
-                    boost::filesystem::permissions( outFilePath,
-                        boost::filesystem::perms((uint32_t(zipEntry->GetAttributes()) >> 16) & 0700));
-                    */
+
+                    // The Unix file permissions are stored in the upper 16 bits of the attributes
+                    uint32_t unixPermissions=(uint32_t(zipEntry->GetAttributes()) >> 16);
+
+                    // Check if executable bit is set for the file owner
+                    bool isExecutable=(unixPermissions & 0100)==0100;
+
+                    //std::cout <<  zipEntry->GetFullName() << " -> " << std::oct << int(unixPermissions) << std::endl;
+                    //std::cout << (isExecutable ? "Executable" : "Not executable") << std::endl;
+
+                    if (isExecutable)
+                    {
+                        // Set executable bit for extracted file (only for file owner, for security reason)
+                        fs::permissions( outFilePath, fs::perms(0700));
+                    }
                 }
             }
 
