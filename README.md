@@ -1,6 +1,6 @@
 # WebGUI for YarraServer
 
-This repository contains the source code for the web interface for the YarraServer, which is part of the Yarra framework. The Yarra WebGUI has been developed using the WT framework (http://www.webtoolkit.eu/wt). The current version used is 3.3.3. Please refer to the installation instructions provided on the WT homepage. For running the compiler, it is recommended to use QT creator (http://qt-project.org/).
+This repository contains the source code for the web interface for the YarraServer, which is part of the Yarra framework. The Yarra WebGUI has been developed using the WT framework (http://www.webtoolkit.eu/wt). The current version used is 3.3.4. Please refer to the installation instructions provided on the WT homepage. For running the compiler, it is recommended to use QT creator (http://qt-project.org/). Compiling the code requires GCC 4.8 and Boost 1.54. When compiling under Ubuntu 12.04 it is necessary to update the GCC compiler for 4.8 and compile Boost from the source code using the newer GCC version.
 
 ##License Information
 The Yarra framework is provided free of charge for use in research applications. It must not be used for diagnostic applications. The author takes no responsibility of any kind for the accuracy or integrity of the created data sets. No data created using the framework should be used to make diagnostic decisions.
