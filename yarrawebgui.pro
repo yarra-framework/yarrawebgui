@@ -1,7 +1,22 @@
 TARGET = YarraWebGUI
 
 # Define identifier for Ubuntu Linux version (UBUNTU_1204 / UBUNTU_1404)
-QMAKE_CXXFLAGS += -DUBUNTU_1404
+BUILD_OS=UBUNTU_1204
+
+equals( BUILD_OS, "UBUNTU_1404" ) {
+    message( "Configuring for Ubuntu 14.04" )
+    QMAKE_CXXFLAGS += -DUBUNTU_1404
+    ICU_PATH=/usr/lib/x86_64-linux-gnu
+    BOOST_PATH=/usr/lib/x86_64-linux-gnu
+}
+
+equals( BUILD_OS, "UBUNTU_1204" ) {
+    message( "Configuring for Ubuntu 12.04" )
+    QMAKE_CXXFLAGS += -DUBUNTU_1204
+    ICU_PATH=/usr/lib
+    BOOST_PATH=/usr/local/lib
+}
+
 QMAKE_CXXFLAGS += -DNDEBUG -std=c++11 -DWT_DEPRECATED_3_0_0
 
 # For compiling / linking the ziplib
@@ -26,15 +41,15 @@ LIBS += /usr/lib/libGraphicsMagick.a
 LIBS += /usr/lib/x86_64-linux-gnu/libfreetype.a
 LIBS += /usr/lib/x86_64-linux-gnu/libtiff.a
 LIBS += /usr/lib/x86_64-linux-gnu/liblcms.a
-LIBS += /usr/lib/x86_64-linux-gnu/libicui18n.a
-LIBS += /usr/lib/x86_64-linux-gnu/libicuuc.a
+LIBS += $$ICU_PATH/libicui18n.a
+LIBS += $$ICU_PATH/libicuuc.a
 
 LIBS += /usr/lib/x86_64-linux-gnu/libglib-2.0.a
 LIBS += /usr/lib/x86_64-linux-gnu/libgobject-2.0.a
 LIBS += /usr/lib/x86_64-linux-gnu/libpango-1.0.a
 LIBS += /usr/lib/x86_64-linux-gnu/libpangoft2-1.0.a
 LIBS += /usr/lib/x86_64-linux-gnu/libpng12.a
-LIBS += /usr/lib/x86_64-linux-gnu/libicudata.a
+LIBS += $$ICU_PATH/libicudata.a
 LIBS += /usr/lib/x86_64-linux-gnu/libgmodule-2.0.a
 LIBS += /usr/lib/x86_64-linux-gnu/libfontconfig.a
 LIBS += /usr/lib/x86_64-linux-gnu/libltdl.a
@@ -45,14 +60,16 @@ LIBS += /usr/lib/x86_64-linux-gnu/libwmflite.a
 LIBS += /usr/lib/x86_64-linux-gnu/libjasper.a
 LIBS += /usr/lib/x86_64-linux-gnu/libjpeg.a
 
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_program_options.a
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_date_time.a
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_filesystem.a
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_system.a
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_signals.a
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_regex.a
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_thread.a
-LIBS += /usr/lib/x86_64-linux-gnu/libboost_random.a
+LIBS += $$BOOST_PATH/libboost_thread.a
+LIBS += $$BOOST_PATH/libboost_filesystem.a
+LIBS += $$BOOST_PATH/libboost_signals.a
+LIBS += $$BOOST_PATH/libboost_regex.a
+LIBS += $$BOOST_PATH/libboost_random.a
+LIBS += $$BOOST_PATH/libboost_date_time.a
+LIBS += $$BOOST_PATH/libboost_program_options.a
+LIBS += $$BOOST_PATH/libboost_system.a
+
+LIBS += -lrt
 
 LIBS += /usr/lib/x86_64-linux-gnu/libssl.a
 LIBS += /usr/lib/x86_64-linux-gnu/libcrypto.a
@@ -69,7 +86,6 @@ LIBS += /usr/lib/x86_64-linux-gnu/libXau.a
 LIBS += /usr/lib/x86_64-linux-gnu/libXdmcp.a
 
 LIBS += -ldl
-#LIBS += -lwt -lwthttp -lboost_signals -lboost_system -lboost_filesystem
 
 TEMPLATE = app
 

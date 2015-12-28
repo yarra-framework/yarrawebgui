@@ -804,11 +804,7 @@ void ywConfigPageModes::doAddMode(WString name, WString templateMode)
 
         try
         {
-#ifdef UBUNTU_1204
-            boost::filesystem3::copy(fullTemplateFilename.toUTF8(), fullFilename.toUTF8());
-#else
             boost::filesystem::copy(fullTemplateFilename.toUTF8(), fullFilename.toUTF8());
-#endif
         }
         catch(const boost::filesystem::filesystem_error& e)
         {
@@ -1021,7 +1017,7 @@ void ywConfigPageModes::showHelp()
 
     scrollArea->setWidget(infoText);
 
-    infoDialog->resize(720,WLength(80,Wt::WLength::Percentage));
+    infoDialog->resize(780,WLength(80,Wt::WLength::Percentage));
     infoDialog->show();
 }
 

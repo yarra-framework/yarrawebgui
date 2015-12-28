@@ -432,8 +432,11 @@ void ywConfigPageModules::showUploadModuleDialog()
                     //wApp->log("notice") <<  zipEntry->GetFullName() << " -> " << std::hex << uint32_t(zipEntry->GetAttributes());
 
                     // Set file permission to allow execution of binaries
+                    /*
+                    // TODO: Only change permissions if execute flag has been set
                     boost::filesystem::permissions( outFilePath,
                         boost::filesystem::perms((uint32_t(zipEntry->GetAttributes()) >> 16) & 0700));
+                    */
                 }
             }
 
