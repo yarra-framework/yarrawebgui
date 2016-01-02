@@ -145,7 +145,7 @@ void ywConfigPageModules::buildCoreModuleTree(Wt::WTreeNode* baseNode)
     // For the core modules, search for manifest files in the modules folder
     try
     {
-        const string& ext_manifest =YW_EXT_MANIFEST;
+        const string& ext_manifest=YW_EXT_MANIFEST;
 
         for (auto dir_entry = boost::filesystem::directory_iterator(coreModulesPath);
              dir_entry != boost::filesystem::directory_iterator(); ++dir_entry)
@@ -382,6 +382,14 @@ void ywConfigPageModules::showUploadModuleDialog()
             {
                 WString errorReason=multipleManifests ? "contains invalid manifest files" : "does not contain manifest file";
                 Wt::WMessageBox::show("Invalid Module", "The uploaded file is not a valid Yarra Module (" + errorReason + ").", Wt::Ok);
+                uploadModuleDialog->reject();
+                return;
+            }
+
+            // Prevent installation if user is trying to upload the server package
+            if (moduleName=="YarraServer")
+            {
+                Wt::WMessageBox::show("Invalid Module", "This package contains the YarraServer components, and it cannot be installed as a module. Use the Update tab on the left side to install server updates.", Wt::Ok);
                 uploadModuleDialog->reject();
                 return;
             }

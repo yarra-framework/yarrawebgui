@@ -1,7 +1,7 @@
 #ifndef YW_GLOBAL_H
 #define YW_GLOBAL_H
 
-#define YW_VERSION   "0.18b2"
+#define YW_VERSION   "0.18b3"
 
 #define YW_CONFIGFILE  "YarraWebGUI.ini"
 #define YW_YARRACONFIG "YarraServer.ini"
@@ -13,7 +13,8 @@
 #define YW_EXT_LOCK      ".lock"
 #define YW_EXT_MODE      ".mode"
 
-#define YW_EXT_MANIFEST  ".ymf"
+#define YW_EXT_MANIFEST    ".ymf"
+#define YW_SERVER_MANIFEST "YarraServer.ymf"
 
 
 #include <Wt/WString>

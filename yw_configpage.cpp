@@ -1,6 +1,7 @@
 #include "yw_configpage.h"
 #include "yw_configpage_ymgenerator.h"
 #include "yw_configpage_modules.h"
+#include "yw_configpage_update.h"
 #include "yw_serverinterface.h"
 #include "yw_application.h"
 #include "yw_helper.h"
@@ -89,6 +90,11 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
         refreshSubpage();
     }));
 
+    pageUpdate=new ywConfigPageUpdate(this);
+    configMenu->addItem("Server Update", pageUpdate)->triggered().connect(std::bind([=] () {
+        refreshSubpage();
+    }));
+
     pageModules=new ywConfigPageModules(this);
     configMenu->addItem("Installed Modules", pageModules)->triggered().connect(std::bind([=] () {
         refreshSubpage();
@@ -135,6 +141,9 @@ void ywConfigPage::refreshSubpage()
         page2->refreshEditor();
         break;
     case 3:
+        pageUpdate->refresh();
+        break;
+    case 4:
         pageModules->refresh();
         break;
     }

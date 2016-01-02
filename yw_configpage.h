@@ -12,6 +12,7 @@ class ywConfigPageModes;
 class ywConfigPageModeList;
 class ywConfigPageServer;
 class ywConfigPageModules;
+class ywConfigPageUpdate;
 
 
 class ywConfigPage : public Wt::WContainerWidget
@@ -34,6 +35,7 @@ public:
     ywConfigPageModeList* page1;
     ywConfigPageServer*   page2;
     ywConfigPageModules*  pageModules;
+    ywConfigPageUpdate*   pageUpdate;
 };
 
 

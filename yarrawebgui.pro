@@ -32,7 +32,6 @@ PRE_TARGETDEPS += $$libzip_lib
 INCLUDEPATH += $$PWD/ziplib/Source
 
 # Statically link dependencies
-
 LIBS += /usr/local/lib/libwthttp.a
 LIBS += /usr/local/lib/libwt.a
 
@@ -101,7 +100,9 @@ SOURCES += main.cpp \
     yw_helper.cpp \
     yw_configpage_ymgenerator.cpp \
     yw_configpage_modules.cpp \
-    yw_modulemanifest.cpp
+    yw_configpage_update.cpp \
+    yw_modulemanifest.cpp \
+    yw_servermanifest.cpp
 
 HEADERS += \
     yw_configuration.h \
@@ -116,4 +117,6 @@ HEADERS += \
     yw_helper.h \
     yw_configpage_ymgenerator.h \
     yw_configpage_modules.h \
-    yw_modulemanifest.h
+    yw_configpage_update.h \
+    yw_modulemanifest.h \
+    yw_servermanifest.h

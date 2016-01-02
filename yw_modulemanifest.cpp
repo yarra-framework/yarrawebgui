@@ -22,7 +22,7 @@ bool ywModuleManifest::readManifest(WString filename)
 {
     boost::property_tree::ptree manifestFile;
 
-    // Check if the yarra config file can be found! Otherwise, stop the webgui
+    // Check for existence of the manifest file
     if (!fs::exists(filename.toUTF8()))
     {
         return false;
@@ -30,6 +30,7 @@ bool ywModuleManifest::readManifest(WString filename)
 
     try
     {
+        // Read all values from the manifest file
         boost::property_tree::ini_parser::read_ini(filename.toUTF8(), manifestFile);
 
         name=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Name",WString(name).toUTF8()));
