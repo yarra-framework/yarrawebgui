@@ -7,6 +7,11 @@
 #include <Wt/WVBoxLayout>
 #include <Wt/WPushButton>
 #include <Wt/WImage>
+#include <Wt/WTimer>
+
+#include <iostream>
+
+#define YW_UPDATE_URL "https://yarra.rocks/release/version.json"
 
 
 ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
@@ -92,10 +97,11 @@ ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
 }
 
 
-void ywConfigPageUpdate::refresh()
+void ywConfigPageUpdate::refreshPage()
 {
     // Update the version information
     updateInfoText();
+    updateText->setText("");
 }
 
 
@@ -121,15 +127,63 @@ void ywConfigPageUpdate::updateInfoText()
 
 void ywConfigPageUpdate::checkForUpdates()
 {
+    parent->app->enableUpdates(true);
+    checkUpdatesBtn->setDisabled(true);
+
+    Http::Client *httpClient = new Http::Client(this);
+
+    httpClient->done().connect(boost::bind(&ywConfigPageUpdate::handleHttpResponse, this, _1, _2));
+
+    if (!httpClient->get(YW_UPDATE_URL))
+    {
+        WString resultText="";
+        resultText="<p><span class=\"label label-danger\">No Connection</span>&nbsp; Unable to open connection.</p>";
+        updateText->setText(resultText);
+
+        checkUpdatesBtn->setDisabled(true);
+        parent->app->enableUpdates(false);
+    }
+}
+
+
+void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, const Http::Message& response)
+{
     WString resultText="";
 
-    resultText="<p><span class=\"label label-success\">Up-to-date</span>&nbsp; This server is up to date.</p>";
-    resultText="<p><span class=\"label label-warning\">Update Available</span>&nbsp; An update for this server is available (Version 0.3).</p> <p><a href=\"https://yarra.rocks/doc/download\" target=\"_blank\">Download the update from the Yarra Page</a>, and install it by clicking the button at the bottom.</p>";
-    resultText="<p><span class=\"label label-danger\">No Connection</span>&nbsp; Unable to retrieve update information.</p>";
+    if ((!error) && (response.status()==200))
+    {
+        // TODO: parse message body
 
-    // TODO
+        /*
+        resultText="<p><span class=\"label label-success\">Up-to-date</span>&nbsp; This server is up to date.</p>";
+        resultText="<p><span class=\"label label-warning\">Update Available</span>&nbsp; An update for this server is available (Version 0.3).</p> <p><a href=\"https://yarra.rocks/doc/download\" target=\"_blank\">Download the update from the Yarra Page</a>, and install it by clicking the button at the bottom.</p>";
+        */
+        resultText="<p><span class=\"label label-success\">Up-to-date</span>&nbsp; This server is up to date.</p>";
+    }
+    else
+    {
+        resultText="<p><span class=\"label label-danger\">No Connection</span>&nbsp; Unable to retrieve update information";
+        if (!error)
+        {
+            resultText+=WString(" (response {1})").arg(response.status());
+        }
+        resultText+=".</p>";
+    }
 
-    updateText->setText(resultText);
+
+    // Grab the application lock, to make sure that the application still exists at this time
+    Wt::WApplication::UpdateLock lock(parent->app);
+
+    if (lock)
+    {
+        // We do have access to the application now, so update the UI controls
+        updateText->setText(resultText);
+        checkUpdatesBtn->setDisabled(false);
+
+        // Disable server-side updates again
+        parent->app->triggerUpdate();
+        parent->app->enableUpdates(false);
+    }
 }
 
 

@@ -37,7 +37,7 @@ public:
     void refreshModuleTree();
     void deleteSelectedModules();
 
-    void refresh();
+    void refreshPage();
 
     bool isServerOffline();
 

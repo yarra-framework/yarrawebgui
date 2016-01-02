@@ -80,7 +80,7 @@ public:
     Wt::WComboBox* modeList;
     Wt::WPushButton* modeListBtn;
 
-    void refresh();
+    void refreshPage();
     void refreshModes();
     void showMode(int index);
 

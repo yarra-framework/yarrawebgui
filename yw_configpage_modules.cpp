@@ -112,7 +112,7 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
 }
 
 
-void ywConfigPageModules::refresh()
+void ywConfigPageModules::refreshPage()
 {
     refreshModuleTree();
 }

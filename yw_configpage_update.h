@@ -6,8 +6,13 @@
 #include <Wt/WProgressBar>
 #include <Wt/WPanel>
 #include <Wt/WText>
+#include <Wt/WText>
+#include <Wt/Http/Client>
 
 using namespace Wt;
+
+#include <boost/system/error_code.hpp>
+
 
 
 class ywConfigPage;
@@ -23,13 +28,16 @@ public:
     Wt::WText* updateText;
     Wt::WPushButton* checkUpdatesBtn;
     Wt::WPushButton* installUpdateBtn;
+    Wt::WTimer* uiUpdateTimer;
 
-    void refresh();
+    void refreshPage();
 
     void updateInfoText();
 
     void checkForUpdates();
     void installUpdate();
+
+    void handleHttpResponse(boost::system::error_code error, const Http::Message& response);
 
 };
 

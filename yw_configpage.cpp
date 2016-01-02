@@ -132,7 +132,7 @@ void ywConfigPage::refreshSubpage()
     {
     case 0:
     default:
-        page0->refresh();
+        page0->refreshPage();
         break;
     case 1:
         page1->refreshEditor();
@@ -141,10 +141,10 @@ void ywConfigPage::refreshSubpage()
         page2->refreshEditor();
         break;
     case 3:
-        pageUpdate->refresh();
+        pageUpdate->refreshPage();
         break;
     case 4:
-        pageModules->refresh();
+        pageModules->refreshPage();
         break;
     }
 }
@@ -621,7 +621,7 @@ void ywConfigPageModes::showMode(int index)
 }
 
 
-void ywConfigPageModes::refresh()
+void ywConfigPageModes::refreshPage()
 {
     WString oldMode=modeList->currentText();
     refreshModes();
