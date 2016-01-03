@@ -18,6 +18,9 @@ public:
 
     bool readManifest(WString yarraPath);
     WString renderInformation();
+
+    bool requiresUpdate(WString latestVersionString);
+
 };
 
 #endif // YW_SERVERMANIFEST_H

@@ -55,7 +55,7 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
     serverStatusLabel->setInline(false);
     serverStatusLabel->setTextFormat(Wt::XHTMLUnsafeText);
     serverStatusLabel->hide();
-    serverStatusLabel->setText("<button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>It is advisable to shutdown the server before modifying any configuration files.");
+    serverStatusLabel->setText("<button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>It is advisable to shutdown the server before modifying the configuration.");
     serverStatusLabel->setStyleClass("alert alert-dismissable alert-warning");
 
     Wt::WVBoxLayout* outerLayout = new Wt::WVBoxLayout();

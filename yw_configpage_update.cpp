@@ -8,10 +8,16 @@
 #include <Wt/WPushButton>
 #include <Wt/WImage>
 #include <Wt/WTimer>
+#include <Wt/WException>
+#include <Wt/Json/Parser>
+#include <Wt/Json/Object>
+#include <Wt/Json/Value>
 
 #include <iostream>
 
-#define YW_UPDATE_URL "https://yarra.rocks/release/version.json"
+
+#define YW_UPDATE_URL     "https://yarra.rocks/release/version.json"
+#define YW_YARRAROCKS_URL "https://yarra.rocks"
 
 
 ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
@@ -152,17 +158,43 @@ void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, con
 
     if ((!error) && (response.status()==200))
     {
-        // TODO: parse message body
+        Json::Object jsonContent;
 
-        /*
-        resultText="<p><span class=\"label label-success\">Up-to-date</span>&nbsp; This server is up to date.</p>";
-        resultText="<p><span class=\"label label-warning\">Update Available</span>&nbsp; An update for this server is available (Version 0.3).</p> <p><a href=\"https://yarra.rocks/doc/download\" target=\"_blank\">Download the update from the Yarra Page</a>, and install it by clicking the button at the bottom.</p>";
-        */
-        resultText="<p><span class=\"label label-success\">Up-to-date</span>&nbsp; This server is up to date.</p>";
+        try
+        {
+            Json::parse(response.body(),jsonContent);
+            WString latestVersion=jsonContent.get("server_version");
+            WString latestLink=jsonContent.get("server_link");
+            WString latestURL=YW_YARRAROCKS_URL+latestLink;
+
+            // Read local version
+            ywServerManifest manifest;
+            if (manifest.readManifest(parent->app->configuration->yarraPath))
+            {
+                if (manifest.requiresUpdate(latestVersion))
+                {
+                    resultText= "<p><span class=\"label label-warning\">Update Available</span>&nbsp;&nbsp; An update for this server is available (Version "+latestVersion+").</p>";
+                    resultText+="<p><a href=\""+latestURL+"\" target=\"_blank\">Click here to download</a> the update or visit the <a href=\"https://yarra.rocks/doc/download\" target=\"_blank\">Yarra Download page</a>. Afterwards, install it using the button below.</p>";
+                }
+                else
+                {
+                    resultText="<p><span class=\"label label-success\">Up-to-date</span>&nbsp;&nbsp; This server is up to date.</p>";
+                }
+            }
+            else
+            {
+                // Reading the local version should always be possible at this point, but handle errors to be sure
+                resultText="<p><span class=\"label label-danger\">Error</span>&nbsp;&nbsp; Unable to identify local version.";
+            }
+        }
+        catch(const std::exception & e)
+        {
+            resultText="<p><span class=\"label label-danger\">Error</span>&nbsp;&nbsp; Unable to parse update information.</p>";
+        }
     }
     else
     {
-        resultText="<p><span class=\"label label-danger\">No Connection</span>&nbsp; Unable to retrieve update information";
+        resultText="<p><span class=\"label label-danger\">No Connection</span>&nbsp;&nbsp; Unable to retrieve update information";
         if (!error)
         {
             resultText+=WString(" (response {1})").arg(response.status());
@@ -189,8 +221,21 @@ void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, con
 
 void ywConfigPageUpdate::installUpdate()
 {
-    // TODO
+    // Return if installation of modules/updates has been disabled in the configuration
+    if (parent->app->configuration->disableModuleInstallation)
+    {
+        Wt::WMessageBox::show("Security Policy", "Installation of updates via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
 
+    // Check if server is offline
+    if (ywServerInterface::isServerRunning(parent->app->configuration->yarraPath))
+    {
+        Wt::WMessageBox::show("Server Online", "The server needs to be offline before updates can be installed.", Wt::Ok);
+        return;
+    }
+
+    // TODO
     Wt::WMessageBox::show("Coming Soon", "This function has not been implemented yet.", Wt::Ok);
 }
 
