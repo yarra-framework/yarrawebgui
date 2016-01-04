@@ -20,6 +20,7 @@ public:
     WString renderInformation();
 
     bool requiresUpdate(WString latestVersionString);
+    float versionStringToFloat(WString versionString);
 
 };
 

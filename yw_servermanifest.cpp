@@ -69,27 +69,28 @@ WString ywServerManifest::renderInformation()
 
 bool ywServerManifest::requiresUpdate(WString latestVersionString)
 {
-    float currentVersion=0.0f;
-    float latestVersion =0.0f;
+    // Convert version strings into float values
+    float currentVersion=versionStringToFloat(version);
+    float latestVersion =versionStringToFloat(latestVersionString);
 
-    // Remove characeters from version strings (in case a beta tag has been added)
-    std::string currentStdString=version.toUTF8();
-    boost::remove_erase_if(currentStdString, !boost::is_any_of("0123456789."));
-
-    std::string latestStdString=latestVersionString.toUTF8();
-    boost::remove_erase_if(latestStdString,  !boost::is_any_of("0123456789."));
-
-    // Convert into float, independent of locale
-    std::istringstream currentStr(currentStdString);
-    currentStr.imbue(std::locale("C"));
-    currentStr >> currentVersion;
-
-    std::istringstream latestStr(latestStdString);
-    latestStr.imbue(std::locale("C"));
-    latestStr >> latestVersion;
-
-    // Compare the float number. Update only if the given version is larger
+    // Compare the float values. Update only if the given version is larger
     return (latestVersion>currentVersion);
 }
 
+
+float ywServerManifest::versionStringToFloat(WString versionString)
+{
+    float versionFloat=0.0f;
+
+    // Remove characters from version string (in case a beta tag has been added)
+    std::string versionStdString=versionString.toUTF8();
+    boost::remove_erase_if(versionStdString, !boost::is_any_of("0123456789."));
+
+    // Convert into float, independent of locale
+    std::istringstream versionStr(versionStdString);
+    versionStr.imbue(std::locale("C"));
+    versionStr >> versionFloat;
+
+    return versionFloat;
+}
 
