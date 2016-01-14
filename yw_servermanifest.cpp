@@ -1,4 +1,3 @@
-#include "yw_global.h"
 #include "yw_servermanifest.h"
 
 #include <boost/filesystem.hpp>
@@ -6,6 +5,8 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/foreach.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <iostream>
 #include <sstream>
@@ -15,19 +16,28 @@
 namespace fs = boost::filesystem;
 
 
-ywServerManifest::ywServerManifest()
+ywServerManifest::ywServerManifest(WString yarraPath)
 {
+    localYarraPath=yarraPath;
+
+    id="";
     version="0";
     releaseDate="1/1/2016";
     versionServerCore="0";
     versionWebGUI="0";
+    minimumVersionForUpdate="";
+    filesToRemoveForUpdate.clear();
 }
 
 
-bool ywServerManifest::readManifest(WString yarraPath)
+bool ywServerManifest::readManifest(WString filename)
 {
-    boost::property_tree::ptree manifestFile;
-    WString filename=yarraPath+"/"+YW_SERVER_MANIFEST;
+    // If no filename is given as argument, read the manifest file
+    // from the local Yarra installation
+    if (filename.empty())
+    {
+        filename=localYarraPath+"/"+YW_SERVER_MANIFEST;
+    }
 
     // Check if the YarraServer manifest file can be found
     if (!fs::exists(filename.toUTF8()))
@@ -35,15 +45,35 @@ bool ywServerManifest::readManifest(WString yarraPath)
         return false;
     }
 
+
+    boost::property_tree::ptree manifestFile;
+
     try
     {
         // Read the values from the manifest file
         boost::property_tree::ini_parser::read_ini(filename.toUTF8(), manifestFile);
 
+        // Check if the file is a valid server manifest file
+        id=WString::fromUTF8(manifestFile.get<std::string>("YarraServer.ID",WString("").toUTF8()));
+
+        if (id!=WString(YW_SERVER_MANIFEST_ID))
+        {
+            return false;
+        }
+
+        // Read all entries of the manifest
         version          =WString::fromUTF8(manifestFile.get<std::string>("YarraServer.Version"          ,WString(version).toUTF8()));
         releaseDate      =WString::fromUTF8(manifestFile.get<std::string>("YarraServer.ReleaseDate"      ,WString(releaseDate).toUTF8()));
         versionServerCore=WString::fromUTF8(manifestFile.get<std::string>("YarraServer.VersionServerCore",WString(versionServerCore).toUTF8()));
         versionWebGUI    =WString::fromUTF8(manifestFile.get<std::string>("YarraServer.VersionWebGUI"    ,WString(versionWebGUI).toUTF8()));
+        minimumVersionForUpdate=WString::fromUTF8(manifestFile.get<std::string>("YarraServer.MinimumVersionForUpdate",WString(minimumVersionForUpdate).toUTF8()));
+
+        // Read the list of files that should be removed before installing an update
+        BOOST_FOREACH(boost::property_tree::ptree::value_type &v, manifestFile.get_child("RemoveForUpdate"))
+        {
+            filesToRemoveForUpdate.push_back(WString::fromUTF8(boost::lexical_cast<std::string>(v.first.data())));
+        }
+
     }
     catch(const std::exception & e)
     {
@@ -75,6 +105,23 @@ bool ywServerManifest::requiresUpdate(WString latestVersionString)
 
     // Compare the float values. Update only if the given version is larger
     return (latestVersion>currentVersion);
+}
+
+
+bool ywServerManifest::canUpdateVersion(WString installedVersionString)
+{
+    // Convert version strings into float values and remove possible characters
+    float minimumVersionNeeded=versionStringToFloat(minimumVersionForUpdate);
+    float installedVersion=versionStringToFloat(installedVersionString);
+
+    // Compare float values. If installed version is too late, the update
+    // cannot be performed automatically
+    if (installedVersion<minimumVersionNeeded)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 

@@ -14,7 +14,14 @@
 #include <Wt/Json/Value>
 
 #include <iostream>
+#include <sys/statvfs.h>
+#include <csignal>
 
+#include <ZipLib/ZipFile.h>
+
+#include <boost/filesystem.hpp>
+
+namespace fs = boost::filesystem;
 
 #define YW_UPDATE_URL     "https://yarra.rocks/release/version.json"
 #define YW_YARRAROCKS_URL "https://yarra.rocks"
@@ -100,6 +107,9 @@ ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
     innerLayout->insertWidget(1,new Wt::WContainerWidget,1);
 
     subLayout->addWidget(innerBtnContainer,0);
+
+    // The update dialog will be created later
+    uploadModuleDialog=0;
 }
 
 
@@ -113,10 +123,10 @@ void ywConfigPageUpdate::refreshPage()
 
 void ywConfigPageUpdate::updateInfoText()
 {
-    ywServerManifest manifest;
     WString text="";
+    ywServerManifest manifest(parent->app->configuration->yarraPath);
 
-    if (!manifest.readManifest(parent->app->configuration->yarraPath))
+    if (!manifest.readManifest())
     {
         text="ERROR: Server information not available.";
         checkUpdatesBtn->setDisabled(true);
@@ -125,6 +135,8 @@ void ywConfigPageUpdate::updateInfoText()
     else
     {
         text=manifest.renderInformation();
+        checkUpdatesBtn->setDisabled(false);
+        installUpdateBtn->setDisabled(false);
     }
 
     infoText->setText(text);
@@ -167,9 +179,9 @@ void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, con
             WString latestLink=jsonContent.get("server_link");
             WString latestURL=YW_YARRAROCKS_URL+latestLink;
 
-            // Read local version
-            ywServerManifest manifest;
-            if (manifest.readManifest(parent->app->configuration->yarraPath))
+            // Read local manifest file
+            ywServerManifest manifest(parent->app->configuration->yarraPath);
+            if (manifest.readManifest())
             {
                 if (manifest.requiresUpdate(latestVersion))
                 {
@@ -235,7 +247,114 @@ void ywConfigPageUpdate::installUpdate()
         return;
     }
 
-    // TODO
-    Wt::WMessageBox::show("Coming Soon", "This function has not been implemented yet.", Wt::Ok);
+    // TODO: Show message if functionality has not been finished before next release
+    //Wt::WMessageBox::show("Coming Soon", "This function has not been implemented yet.", Wt::Ok);
+    //return;
+
+
+    uploadModuleDialog=new WDialog("Upload Server Update");
+    uploadModuleDialog->contents()->setMinimumSize(500,80);
+    Wt::WVBoxLayout* contentLayout=new Wt::WVBoxLayout();
+
+    contentLayout->addWidget(new Wt::WText("Select YarraServer package to upload (.zip):"));
+    contentLayout->addSpacing(10);
+
+    Wt::WFileUpload* uploadModule = new Wt::WFileUpload();
+    uploadModule->setFilters(".zip");
+
+    Wt::WProgressBar* progressBar=new Wt::WProgressBar();
+    progressBar->resize(WLength::Auto, 30);
+    uploadModule->setProgressBar(progressBar);
+
+    contentLayout->addWidget(uploadModule);
+    contentLayout->addStretch(1);
+    uploadModuleDialog->contents()->setLayout(contentLayout);
+
+    // Automatically launch upload after selecting file
+    uploadModule->changed().connect(std::bind([=] () {
+        uploadModule->upload();
+    }));
+
+    uploadModule->fileTooLarge().connect(std::bind([=] () {
+        Wt::WMessageBox::show("Update Upload", "The selected file is too large", Wt::Ok);
+    }));
+
+    // Handler for succesfull upload
+    uploadModule->uploaded().connect(std::bind([=] () {
+        checkUploadedFile(uploadModule->spoolFileName(), uploadModule->clientFileName());
+    }));
+
+    Wt::WPushButton *closeBtn = new Wt::WPushButton("Cancel", uploadModuleDialog->footer());
+    closeBtn->setDefault(true);
+    closeBtn->clicked().connect(uploadModuleDialog, &Wt::WDialog::reject);
+
+    // Free dialog when it is closed
+    uploadModuleDialog->finished().connect(std::bind([=] () {
+        delete uploadModuleDialog;
+        uploadModuleDialog=0;
+    }));
+
+    uploadModuleDialog->show();
+
 }
+
+
+void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString originalFilename)
+{
+    try
+    {
+        auto zipArchive = ZipFile::Open(uploadedFilename.toUTF8());
+
+        // Check is ZIP file contains manifest file and identify module name
+        bool validManifestFound=false;
+        size_t requiredSize=0;
+
+        std::string searchString=YW_SERVER_MANIFEST;
+
+        // Loop over all files to see if the archive contains the file "YarraServer.ymf".
+        // Also estimate the total size of the files when extracted.
+        for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
+        {
+            std::string fileEntry = zipArchive->GetEntry(i)->GetFullName();
+            requiredSize += zipArchive->GetEntry(i)->GetSize();
+
+            // Make sure that the archive contains the manifest file
+            if (fileEntry.compare(searchString)==0)
+            {
+                validManifestFound=true;
+            }
+        }
+
+        if (!validManifestFound)
+        {
+            Wt::WMessageBox::show("Invalid Package", "The uploaded file is not a valid YarraServer package.", Wt::Ok);
+            uploadModuleDialog->reject();
+            return;
+        }
+
+        // TODO: Generate temporary file name
+
+        // TODO: Extract manifest file from archive
+
+        // TODO: Read extracted manifest file and compare with version numbers form installed version
+
+        // TODO: Show confirmation dialig. Mention that backup should be created first. Ask for approval to go forward
+
+        // TODO: Uninstall current version by removing files listed in manifest file of installed version
+
+        // TODO: Iterate through ZIP file and extract files that don't exist in local version. Replace variable paths via current configuration
+
+        // Reboot the webgui by terminating the current instance
+        std::cout << std::endl << "## Enforcing restart of WebGUI after server update ##" << std::endl << std::endl;
+        killpg(getpid(),SIGTERM);
+    }
+    catch(const std::exception & e)
+    {
+        Wt::WMessageBox::show("Error", WString("Installation of update package failed. Reason: ") + e.what(), Wt::Ok);
+    }
+
+    // Close the upload dialog
+    uploadModuleDialog->accept();
+}
+
 

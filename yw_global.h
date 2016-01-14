@@ -13,8 +13,9 @@
 #define YW_EXT_LOCK      ".lock"
 #define YW_EXT_MODE      ".mode"
 
-#define YW_EXT_MANIFEST    ".ymf"
-#define YW_SERVER_MANIFEST "YarraServer.ymf"
+#define YW_EXT_MANIFEST       ".ymf"
+#define YW_SERVER_MANIFEST    "YarraServer.ymf"
+#define YW_SERVER_MANIFEST_ID "YarraServer_Release"
 
 
 #include <Wt/WString>

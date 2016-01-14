@@ -29,6 +29,7 @@ public:
     Wt::WPushButton* checkUpdatesBtn;
     Wt::WPushButton* installUpdateBtn;
     Wt::WTimer* uiUpdateTimer;
+    Wt::WDialog* uploadModuleDialog;
 
     void refreshPage();
 
@@ -38,6 +39,8 @@ public:
     void installUpdate();
 
     void handleHttpResponse(boost::system::error_code error, const Http::Message& response);
+
+    void checkUploadedFile(WString uploadedFilename, WString originalFilename);
 
 };
 
