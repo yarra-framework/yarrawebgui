@@ -17,9 +17,10 @@
 #include <sys/statvfs.h>
 #include <csignal>
 
+#include <boost/filesystem.hpp>
+
 #include <ZipLib/ZipFile.h>
 
-#include <boost/filesystem.hpp>
 
 namespace fs = boost::filesystem;
 
@@ -303,7 +304,7 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
 {
     try
     {
-        auto zipArchive = ZipFile::Open(uploadedFilename.toUTF8());
+        ZipArchive::Ptr zipArchive = ZipFile::Open(uploadedFilename.toUTF8());
 
         // Check is ZIP file contains manifest file and identify module name
         bool validManifestFound=false;
@@ -341,42 +342,110 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
         // TODO: Untested so far!
 
         // Generate temporary file name and extract manifest file from archive
-        boost::filesystem::path tempManifestFile=boost::filesystem::unique_path();
+        fs::path tempManifestFile=fs::unique_path();
         ZipFile::ExtractFile(uploadedFilename.toUTF8(), manifestInZip->GetName(), tempManifestFile.string());
         std::cout << "Temporary filename: " << tempManifestFile.string() << std::endl; //DEBUG
 
-        // Read extracted manifest file and compare with version numbers form installed version
+        ywServerManifest installedManifest(parent->app->configuration->yarraPath);
         ywServerManifest tempManifest(parent->app->configuration->yarraPath);
+
+        // Read extracted manifest file and compare with version numbers form installed version
         if (tempManifest.readManifest(tempManifestFile.string()))
         {
-            // TODO: Compare version number to installed version
+            // Now read the manifest file from the installed version
+            if (installedManifest.readManifest())
+            {
+                // Compare version number to installed version
+                if (installedManifest.requiresUpdate(tempManifest.version))
+                {
+                    // Now check if we can update the installed version. If not, abort the update
+                    if (tempManifest.canUpdateVersion(installedManifest.version)==false)
+                    {
+                        abortUpdate=true;
+                        abortMessage="The installed version cannot be updated. Please install the new version manually according to the instructions given on the website.";
+                    }
+                    else
+                    {
+                        // Finally test if enough disk space is available. Assuming that all folder are
+                        // installed on the same volume. Space estimation is conservative.
+
+                        // TODO: Compare required space to available
+                    }
+                }
+                else
+                {
+                    abortUpdate=true;
+                    abortMessage="Installed version is up-to-date.";
+                }
+            }
+            else
+            {
+                // Reading local manifest file did not succeed. Abort update.
+                abortUpdate=true;
+                abortMessage="Cannot determine installed version.";
+            }
         }
         else
         {
-            // TODO: Show error message.
+            // Opening manifest file did not work. Abort update
             abortUpdate=true;
             abortMessage="Update package is corrupt.";
         }
 
+        if (!abortUpdate)
+        {
+            // Show confirmation dialog. Mention that backup should be created first. Ask for approval to go forward
+            if (Wt::WMessageBox::show("Confirm Update Installation",
+                                      "Are you sure to update the server? This cannot be undone. Configuration and mode files will not be overwritten. It is nonetheless recommended to backup all files prior to updating.",
+                                      Wt::Ok | Wt::Cancel) != Wt::Ok)
+            {
+                abortUpdate=true;
+            }
+        }
+
         // Remove extracted temporary manifest file
-        // TOOD
+        try
+        {
+            fs::remove(tempManifestFile);
+        }
+        catch(const std::exception & e)
+        {
+            std::cout << "Unable to delete temporary manifest file " << tempManifestFile.string() << std::endl;
+            std::cout << "Not cricital, continue." << std::endl;
+        }
 
-        // TODO: Show confirmation dialig. Mention that backup should be created first. Ask for approval to go forward
-
+        // Show abort dialog and return if the update should/can not be performed
         if (abortUpdate)
         {
             if (!abortMessage.empty())
             {
-                // TODO: Show dialog with message
+                // Show dialog with reason why update cannot be installed
+                Wt::WMessageBox::show("Unable to Install Update", "The update cannot be installed. Reason: " + abortMessage, Wt::Ok);
             }
             return;
         }
 
-        // TODO: Uninstall current version by removing files listed in manifest file of installed version
+        // OK, update possible and confirmed. We can install the update.
 
-        // TODO: Iterate through ZIP file and extract files that don't exist in local version. Replace variable paths via current configuration
+        // First, remove the old version
+        if (!removeInstalledVersion(installedManifest))
+        {
+            // Problems during uninstallation. Possibly missing write permission. Inform user.
 
-        // Reboot the webgui by terminating the current instance
+            // TODO
+        }
+        else
+        {
+            // Second, install the new version
+            if (!installUpdate(tempManifest, zipArchive))
+            {
+                // Problems during installation. Inform user.
+
+                // TODO
+            }
+        }
+
+        // Reboot the webgui by terminating the current instance (will be restarted through upstart service)
         std::cout << std::endl << "## Enforcing restart of WebGUI after server update ##" << std::endl << std::endl;
         killpg(getpid(),SIGTERM);
     }
@@ -389,4 +458,26 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
     uploadModuleDialog->accept();
 }
 
+
+bool ywConfigPageUpdate::removeInstalledVersion(ywServerManifest& installedManifest)
+{
+    // Uninstall current version by removing files listed in manifest file of installed version
+
+    // TOOD: Implement
+
+    return true;
+}
+
+
+bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::shared_ptr<ZipArchive> zipFile)
+{
+    // Iterate through ZIP file and extract files that don't exist in local version. Replace variable paths via current configuration
+
+    for (int i=0; i<zipFile->GetEntriesCount(); ++i )
+    {
+        // TODO: Implement
+    }
+
+    return true;
+}
 

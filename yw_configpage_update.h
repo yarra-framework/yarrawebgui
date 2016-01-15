@@ -9,13 +9,16 @@
 #include <Wt/WText>
 #include <Wt/Http/Client>
 
-using namespace Wt;
-
 #include <boost/system/error_code.hpp>
 
+using namespace Wt;
 
 
 class ywConfigPage;
+class ywServerManifest;
+
+class ZipArchive;
+
 
 class ywConfigPageUpdate : public Wt::WContainerWidget
 {
@@ -41,6 +44,9 @@ public:
     void handleHttpResponse(boost::system::error_code error, const Http::Message& response);
 
     void checkUploadedFile(WString uploadedFilename, WString originalFilename);
+
+    bool removeInstalledVersion(ywServerManifest& installedManifest);
+    bool installUpdate(ywServerManifest& updateManifest, std::shared_ptr<ZipArchive> zipFile);
 
 };
 
