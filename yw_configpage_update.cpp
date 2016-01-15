@@ -234,6 +234,10 @@ void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, con
 
 void ywConfigPageUpdate::installUpdate()
 {
+    //DEBUG
+    //showUpdateResult(true, "0.5");
+    //DEBUG
+
     // Return if installation of modules/updates has been disabled in the configuration
     if (parent->app->configuration->disableModuleInstallation)
     {
@@ -282,7 +286,7 @@ void ywConfigPageUpdate::installUpdate()
 
     // Handler for succesfull upload
     uploadModule->uploaded().connect(std::bind([=] () {
-        checkUploadedFile(uploadModule->spoolFileName(), uploadModule->clientFileName());
+        checkUploadAndUpdate(uploadModule->spoolFileName(), uploadModule->clientFileName());
     }));
 
     Wt::WPushButton *closeBtn = new Wt::WPushButton("Cancel", uploadModuleDialog->footer());
@@ -300,7 +304,7 @@ void ywConfigPageUpdate::installUpdate()
 }
 
 
-void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString originalFilename)
+void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString originalFilename)
 {
     try
     {
@@ -426,24 +430,35 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
         }
 
         // OK, update possible and confirmed. We can install the update.
+        updateLog.clear();
+
+        ulog("## Starting server update procedure ##");
+        ulog("Installed version: " + installedManifest.version);
+        ulog("Update version: "    + tempManifest.version);
+        ulog("");
 
         // First, remove the old version
         if (!removeInstalledVersion(installedManifest))
         {
             // Problems during uninstallation. Possibly missing write permission. Inform user.
-
-            // TODO
+            showUpdateResult(false);
         }
         else
         {
             // Second, install the new version
-            if (!installUpdate(tempManifest, zipArchive))
+            if (!installUpdate(tempManifest, zipArchive, uploadedFilename.toUTF8()))
             {
                 // Problems during installation. Inform user.
-
-                // TODO
+                showUpdateResult(false);
+            }
+            else
+            {
+                // Update was succesful
+                showUpdateResult(true,tempManifest.version);
             }
         }
+
+        ulog("## Done with update. Restarting WebGUI in next step. ##");
 
         // Reboot the webgui by terminating the current instance (will be restarted through upstart service)
         std::cout << std::endl << "## Enforcing restart of WebGUI after server update ##" << std::endl << std::endl;
@@ -461,23 +476,189 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
 
 bool ywConfigPageUpdate::removeInstalledVersion(ywServerManifest& installedManifest)
 {
-    // Uninstall current version by removing files listed in manifest file of installed version
+    ulog("## Removing files from installed version ##");
 
-    // TOOD: Implement
+    // Uninstall current version by removing files listed in manifest file of installed version
+    for (WString fileToRemove : installedManifest.filesToRemoveForUpdate)
+    {
+        // Construct absolute file path, depending on local installation location
+        std::string absoluteLocation=getAbsoluteInstallationPath(fileToRemove.toUTF8());
+
+        if (!fs::exists(absoluteLocation))
+        {
+            ulog("To-be-deleted file or folder not found  " + absoluteLocation, WARNING);
+        }
+        else
+        {
+            try
+            {
+                // Distinguish between folder and files, mainly for reporting purpose
+                if (fs::is_directory(absoluteLocation))
+                {
+                    fs::remove_all(absoluteLocation);
+                    ulog("Removed folder " + absoluteLocation, OK);
+                }
+                else
+                {
+                    fs::remove(absoluteLocation);
+                    ulog("Removed file  " + absoluteLocation, OK);
+                }
+            }
+            catch(const std::exception & e)
+            {
+                ulog("Unable to remove file  " + absoluteLocation, ERROR);
+                ulog("File permissions might be configured incorrectly.");
+                ulog("Terminating update procedure.");
+                ulog("Please check your installation settings and rerun the update.");
+
+                // Stopping update
+                return false;
+            }
+        }
+    }
 
     return true;
 }
 
 
-bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::shared_ptr<ZipArchive> zipFile)
+bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::shared_ptr<ZipArchive> zipFile, std::string zipFilename)
 {
-    // Iterate through ZIP file and extract files that don't exist in local version. Replace variable paths via current configuration
+    ulog("## Installing files from updated version ##");
 
+    bool updateWithoutErrors=true;
+
+    // Iterate through ZIP file and extract files that don't exist in local version
     for (int i=0; i<zipFile->GetEntriesCount(); ++i )
     {
-        // TODO: Implement
+        // ## Get information on zip archive entry
+        ZipArchiveEntry::Ptr zipEntry=zipFile->GetEntry(i);
+
+        // Replace variable paths via current configuration
+        std::string outputFilename=getAbsoluteInstallationPath(zipEntry->GetFullName());
+        fs::path outputFilepath(outputFilename);
+
+        // Check if file already exists. If so, we can skip extraction and go on.
+        if (fs::exists(outputFilepath))
+        {
+            ulog("File exists  " + outputFilename, OK);
+
+            // Skip extraction of file
+            continue;
+        }
+
+        // ## Make sure that folder(s) needed for extraction exist
+        try
+        {
+            fs::create_directories(outputFilepath.parent_path());
+        }
+        catch(const std::exception & e)
+        {
+            ulog("Unable to create folders for  " + outputFilename, ERROR);
+            ulog("Terminating update procedure.");
+            ulog("You will need to perform the update manually as described on the Yarra website.");
+
+            // Stopping update
+            return false;
+        }
+
+        if (!fs::is_directory(outputFilepath))
+        {
+            // ## Extract file from archive
+            try
+            {
+                ZipFile::ExtractFile(zipFilename, zipEntry->GetFullName(), outputFilepath.string());
+            }
+            catch(const std::exception & e)
+            {
+                ulog("Unable to extract file  " + outputFilename, ERROR);
+                ulog("Terminating update procedure.");
+                ulog("You will need to perform the update manually as described on the Yarra website.");
+
+                // Stopping update
+                return false;
+            }
+
+            // ## Set file permission to allow execution of binaries
+            try
+            {
+                // The Unix file permissions are stored in the upper 16 bits of the attributes
+                uint32_t unixPermissions=(uint32_t(zipEntry->GetAttributes()) >> 16);
+
+                // Check if executable bit is set for the file owner
+                bool isExecutable=(unixPermissions & 0100)==0100;
+
+                if (isExecutable)
+                {
+                    // Set executable bit for extracted file (only for file owner, for security reason)
+                    fs::permissions(outputFilepath, fs::perms(0700));
+                }
+            }
+            catch(const std::exception & e)
+            {
+                ulog("Unable to set executable permissions for " + outputFilename, ERROR);
+                ulog("You will need to change the permissions manually.");
+                ulog("Continuing with update");
+
+                // Don't stop the update, but inform the user about the problem
+                updateWithoutErrors=false;
+            }
+        }
     }
 
-    return true;
+    return updateWithoutErrors;
+}
+
+
+std::string ywConfigPageUpdate::getAbsoluteInstallationPath(std::string pathInPackage)
+{
+    // TODO: Implement
+
+    return pathInPackage;
+}
+
+
+void ywConfigPageUpdate::showUpdateResult(bool isSuccess, WString newVersionString)
+{
+    WString title="Update Successful";
+    WString text="Congratulations! Updating the server was successful.<br /><br />The server is now running version " + newVersionString;
+
+    if (!isSuccess)
+    {
+        title="Update Failed";
+        text="";
+    }
+
+    WDialog resultDialog(title);
+    //resultDialog.contents()->setMinimumSize(900,100);
+    Wt::WVBoxLayout* contentLayout=new Wt::WVBoxLayout();
+
+    contentLayout->addWidget(new Wt::WText(text));
+    contentLayout->addSpacing(30);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+
+    WPanel* logPanel=new WPanel();
+    logPanel->setTitle("Update Log");
+    contentLayout->addWidget(logPanel);
+
+    WScrollArea* scrollArea=new WScrollArea();
+    scrollArea->setMinimumSize(800,140);
+    scrollArea->setMaximumSize(800,140);
+    logPanel->setCentralWidget(scrollArea);
+
+    WText* logText=new WText();
+    scrollArea->setWidget(logText);
+
+    resultDialog.contents()->setLayout(contentLayout);
+
+    // TODO: Transfer log stringlist
+    WString logContent="";
+    logText->setText(logContent);
+
+    // Add OK button and connect with rejection signal
+    Wt::WPushButton *closeBtn = new Wt::WPushButton("OK", resultDialog.footer());
+    closeBtn->setDefault(true);
+    closeBtn->clicked().connect(&resultDialog, &Wt::WDialog::reject);
+
+    resultDialog.exec();
 }
 
