@@ -313,6 +313,8 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
 
         // Loop over all files to see if the archive contains the file "YarraServer.ymf".
         // Also estimate the total size of the files when extracted.
+        ZipArchiveEntry::Ptr manifestInZip=0;
+
         for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
         {
             std::string fileEntry = zipArchive->GetEntry(i)->GetFullName();
@@ -321,6 +323,7 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
             // Make sure that the archive contains the manifest file
             if (fileEntry.compare(searchString)==0)
             {
+                manifestInZip=zipArchive->GetEntry(i);
                 validManifestFound=true;
             }
         }
@@ -332,13 +335,42 @@ void ywConfigPageUpdate::checkUploadedFile(WString uploadedFilename, WString ori
             return;
         }
 
-        // TODO: Generate temporary file name
+        bool abortUpdate=false;
+        WString abortMessage="";
 
-        // TODO: Extract manifest file from archive
+        // TODO: Untested so far!
 
-        // TODO: Read extracted manifest file and compare with version numbers form installed version
+        // Generate temporary file name and extract manifest file from archive
+        boost::filesystem::path tempManifestFile=boost::filesystem::unique_path();
+        ZipFile::ExtractFile(uploadedFilename.toUTF8(), manifestInZip->GetName(), tempManifestFile.string());
+        std::cout << "Temporary filename: " << tempManifestFile.string() << std::endl; //DEBUG
+
+        // Read extracted manifest file and compare with version numbers form installed version
+        ywServerManifest tempManifest(parent->app->configuration->yarraPath);
+        if (tempManifest.readManifest(tempManifestFile.string()))
+        {
+            // TODO: Compare version number to installed version
+        }
+        else
+        {
+            // TODO: Show error message.
+            abortUpdate=true;
+            abortMessage="Update package is corrupt.";
+        }
+
+        // Remove extracted temporary manifest file
+        // TOOD
 
         // TODO: Show confirmation dialig. Mention that backup should be created first. Ask for approval to go forward
+
+        if (abortUpdate)
+        {
+            if (!abortMessage.empty())
+            {
+                // TODO: Show dialog with message
+            }
+            return;
+        }
 
         // TODO: Uninstall current version by removing files listed in manifest file of installed version
 
