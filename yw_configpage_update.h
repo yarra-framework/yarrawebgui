@@ -68,15 +68,24 @@ inline void ywConfigPageUpdate::ulog(WString message, LogMessageType type)
     switch (type)
     {
     case OK:
-        prefix="OK: ";
+        prefix="OK";
+        preHTML ="<span style=\"color: #fff; background: #3fb618; padding-left: 4px; padding-right: 4px;\">";
+        postHTML="</span>&nbsp;";
+        message=" "+message;
         break;
 
     case WARNING:
-        prefix="WARNING: ";
+        prefix="WARNING";
+        preHTML ="<span style=\"color: #fff; background: #ff7518; padding-left: 4px; padding-right: 4px;\">";
+        postHTML="</span>&nbsp;";
+        message=" "+message;
         break;
 
     case ERROR:
-        prefix="ERROR: ";
+        prefix="ERROR";
+        preHTML ="<span style=\"color: #fff; background: #ff0039; padding-left: 4px; padding-right: 4px;\">";
+        postHTML="</span>&nbsp;";
+        message=" "+message;
         break;
 
     case INFO:
@@ -89,7 +98,7 @@ inline void ywConfigPageUpdate::ulog(WString message, LogMessageType type)
 
     // Store message in internal log, so that it can be displayed to the end user
     // Enclose HTML pre/post statements to highlight errors and warnings
-    updateLog.push_back(preHTML+prefix+message+postHTML);
+    updateLog.push_back(preHTML+prefix+postHTML+message);
 }
 
 

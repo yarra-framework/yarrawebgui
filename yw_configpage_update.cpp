@@ -234,10 +234,6 @@ void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, con
 
 void ywConfigPageUpdate::installUpdate()
 {
-    //DEBUG
-    //showUpdateResult(true, "0.5");
-    //DEBUG
-
     // Return if installation of modules/updates has been disabled in the configuration
     if (parent->app->configuration->disableModuleInstallation)
     {
@@ -625,15 +621,14 @@ void ywConfigPageUpdate::showUpdateResult(bool isSuccess, WString newVersionStri
     if (!isSuccess)
     {
         title="Update Failed";
-        text="";
+        text="A problem with the updated occured.<br /><br />Please review the update log below to identify the problem and find instructions how to proceed.";
     }
 
     WDialog resultDialog(title);
-    //resultDialog.contents()->setMinimumSize(900,100);
     Wt::WVBoxLayout* contentLayout=new Wt::WVBoxLayout();
 
     contentLayout->addWidget(new Wt::WText(text));
-    contentLayout->addSpacing(30);
+    contentLayout->addSpacing(20);
     contentLayout->setContentsMargins(0, 0, 0, 0);
 
     WPanel* logPanel=new WPanel();
@@ -650,8 +645,13 @@ void ywConfigPageUpdate::showUpdateResult(bool isSuccess, WString newVersionStri
 
     resultDialog.contents()->setLayout(contentLayout);
 
-    // TODO: Transfer log stringlist
+    // Write update log into control
     WString logContent="";
+    for (WString& logline : updateLog)
+    {
+        logContent+=logline+"<br />";
+    }
+
     logText->setText(logContent);
 
     // Add OK button and connect with rejection signal
