@@ -54,6 +54,7 @@ public:
     bool installUpdate(ywServerManifest& updateManifest, std::shared_ptr<ZipArchive> zipFile, std::string zipFilename);
     std::string getAbsoluteInstallationPath(std::string pathInPackage);
     void showUpdateResult(bool isSuccess, WString newVersionString="");
+    bool isSufficientDiskSpaceAvailable(size_t neededSpace);
 
     void ulog(WString message, LogMessageType type=INFO);
 };

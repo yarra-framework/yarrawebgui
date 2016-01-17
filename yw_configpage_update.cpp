@@ -248,11 +248,6 @@ void ywConfigPageUpdate::installUpdate()
         return;
     }
 
-    // TODO: Show message if functionality has not been finished before next release
-    //Wt::WMessageBox::show("Coming Soon", "This function has not been implemented yet.", Wt::Ok);
-    //return;
-
-
     uploadModuleDialog=new WDialog("Upload Server Update");
     uploadModuleDialog->contents()->setMinimumSize(500,80);
     Wt::WVBoxLayout* contentLayout=new Wt::WVBoxLayout();
@@ -339,8 +334,6 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
         bool abortUpdate=false;
         WString abortMessage="";
 
-        // TODO: Untested so far!
-
         // Generate temporary file name and extract manifest file from archive
         fs::path tempManifestFile=fs::unique_path();
         ZipFile::ExtractFile(uploadedFilename.toUTF8(), manifestInZip->GetName(), tempManifestFile.string());
@@ -368,8 +361,11 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
                     {
                         // Finally test if enough disk space is available. Assuming that all folder are
                         // installed on the same volume. Space estimation is conservative.
-
-                        // TODO: Compare required space to available
+                        if (!isSufficientDiskSpaceAvailable(requiredSize))
+                        {
+                            abortUpdate=true;
+                            abortMessage="Insufficient disk space available to install update. Please free up disk space in the Yarra installation volume.";
+                        }
                     }
                 }
                 else
@@ -524,7 +520,7 @@ bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::sh
     bool updateWithoutErrors=true;
 
     // Iterate through ZIP file and extract files that don't exist in local version
-    for (int i=0; i<zipFile->GetEntriesCount(); ++i )
+    for (size_t i=0; i<zipFile->GetEntriesCount(); i++)
     {
         // ## Get information on zip archive entry
         ZipArchiveEntry::Ptr zipEntry=zipFile->GetEntry(i);
@@ -607,8 +603,77 @@ bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::sh
 
 std::string ywConfigPageUpdate::getAbsoluteInstallationPath(std::string pathInPackage)
 {
-    // TODO: Implement
+    std::string searchTerm="";
 
+    // Test if the file path in the archive is a configurable path. If so,
+    // replace it with the path configured on the local server
+
+    searchTerm="modules/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraModulesPath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    searchTerm="modules_user/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraModulesUserPath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    searchTerm="modes/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraModesPath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    searchTerm="queue/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraQueuePath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    searchTerm="work/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraWorkPath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    searchTerm="finished/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraStoragePath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    searchTerm="fail/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraFailPath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    searchTerm="log/";
+    if (pathInPackage.find(searchTerm)==0)
+    {
+        std::string installPath=parent->app->configuration->yarraLogPath.toUTF8()+"/";
+        pathInPackage.replace(0,searchTerm.length(),installPath);
+        return pathInPackage;
+    }
+
+    // If not one of the configurable subfolders, add the installation location
+    pathInPackage=parent->app->configuration->yarraPath.toUTF8()+"/"+pathInPackage;
     return pathInPackage;
 }
 
@@ -661,4 +726,26 @@ void ywConfigPageUpdate::showUpdateResult(bool isSuccess, WString newVersionStri
 
     resultDialog.exec();
 }
+
+
+bool ywConfigPageUpdate::isSufficientDiskSpaceAvailable(size_t neededSpace)
+{
+    struct statvfs64 fiData;
+    __fsblkcnt64_t sizeAvailable=0;
+
+    std::string yarraLocation=parent->app->configuration->yarraPath.toUTF8();
+
+    if((statvfs64(yarraLocation.c_str(),&fiData)) < 0)
+    {
+        // statvfs call failed, assuming there is enough space
+        return true;
+    }
+    else
+    {
+        sizeAvailable=fiData.f_bsize*fiData.f_bavail;
+
+        return (sizeAvailable>neededSpace);
+    }
+}
+
 
