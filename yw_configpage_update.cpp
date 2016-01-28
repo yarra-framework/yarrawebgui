@@ -392,7 +392,7 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
         {
             // Show confirmation dialog. Mention that backup should be created first. Ask for approval to go forward
             if (Wt::WMessageBox::show("Confirm Update Installation",
-                                      "Are you sure to update the server? This cannot be undone. Configuration and mode files will not be overwritten. It is nonetheless recommended to backup all files prior to updating.",
+                                      "Are you sure to update the server? This cannot be undone.<br /> <br />Configuration and mode files will not be overwritten. <br />It is recommended to backup all files prior to updating.",
                                       Wt::Ok | Wt::Cancel) != Wt::Ok)
             {
                 abortUpdate=true;
@@ -416,8 +416,12 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
             if (!abortMessage.empty())
             {
                 // Show dialog with reason why update cannot be installed
-                Wt::WMessageBox::show("Unable to Install Update", "The update cannot be installed. Reason: " + abortMessage, Wt::Ok);
+                Wt::WMessageBox::show("Unable to Install Update", "The update cannot be installed.<br /> <br />Reason: &nbsp;" + abortMessage, Wt::Ok);
             }
+
+            // Close the upload dialog
+            uploadModuleDialog->accept();
+
             return;
         }
 
@@ -454,6 +458,8 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
 
         // Reboot the webgui by terminating the current instance (will be restarted through upstart service)
         std::cout << std::endl << "## Enforcing restart of WebGUI after server update ##" << std::endl << std::endl;
+
+        // TODO: Does not shutdown the session when running as upstart service. Needs fix.
         killpg(getpid(),SIGTERM);
     }
     catch(const std::exception & e)
@@ -559,6 +565,8 @@ bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::sh
             try
             {
                 ZipFile::ExtractFile(zipFilename, zipEntry->GetFullName(), outputFilepath.string());
+                ulog("Extracted file  " + outputFilename, OK);
+
             }
             catch(const std::exception & e)
             {
