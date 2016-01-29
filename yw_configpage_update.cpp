@@ -12,6 +12,7 @@
 #include <Wt/Json/Parser>
 #include <Wt/Json/Object>
 #include <Wt/Json/Value>
+#include <Wt/WServer>
 
 #include <iostream>
 #include <sys/statvfs.h>
@@ -104,8 +105,8 @@ ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
         installUpdate();
     }));
 
-    innerLayout->insertWidget(0,installUpdateBtn,0,Wt::AlignLeft);
-    innerLayout->insertWidget(1,new Wt::WContainerWidget,1);
+    innerLayout->addWidget(installUpdateBtn,0,Wt::AlignLeft);
+    innerLayout->addWidget(new Wt::WContainerWidget,1);
 
     subLayout->addWidget(innerBtnContainer,0);
 
@@ -420,7 +421,7 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
             }
 
             // Close the upload dialog
-            uploadModuleDialog->accept();
+            uploadModuleDialog->reject();
 
             return;
         }
@@ -433,14 +434,19 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
         ulog("Update version: "    + tempManifest.version);
         ulog("");
 
+        bool performRestart=true;
+
         // First, remove the old version
         if (!removeInstalledVersion(installedManifest))
         {
             // Problems during uninstallation. Possibly missing write permission. Inform user.
             showUpdateResult(false);
+
+            // Don't restart the webgui if a problem occured because the webgui might not restart properly.
+            performRestart=false;
         }
         else
-        {
+        {           
             // Second, install the new version
             if (!installUpdate(tempManifest, zipArchive, uploadedFilename.toUTF8()))
             {
@@ -454,13 +460,18 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
             }
         }
 
-        ulog("## Done with update. Restarting WebGUI in next step. ##");
+        if (performRestart)
+        {
+            ulog("## Done with update. Restarting WebGUI in next step. ##");
 
-        // Reboot the webgui by terminating the current instance (will be restarted through upstart service)
-        std::cout << std::endl << "## Enforcing restart of WebGUI after server update ##" << std::endl << std::endl;
+            // Show dialog with reason why update cannot be installed
+            Wt::WMessageBox::show("Restart of WebGUI", "The WebGUI will be restarted now. It will be necessary to relogin.", Wt::Ok);
 
-        // TODO: Does not shutdown the session when running as upstart service. Needs fix.
-        killpg(getpid(),SIGTERM);
+            // Reboot the webgui by terminating the current instance (will be restarted through upstart service)
+            std::cout << std::endl << "## Enforcing restart of WebGUI after server update ##" << std::endl << std::endl;
+
+            killpg(getppid(),SIGTERM);
+        }
     }
     catch(const std::exception & e)
     {
@@ -468,7 +479,7 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
     }
 
     // Close the upload dialog
-    uploadModuleDialog->accept();
+    uploadModuleDialog->reject();
 }
 
 
@@ -482,13 +493,13 @@ bool ywConfigPageUpdate::removeInstalledVersion(ywServerManifest& installedManif
         // Construct absolute file path, depending on local installation location
         std::string absoluteLocation=getAbsoluteInstallationPath(fileToRemove.toUTF8());
 
-        if (!fs::exists(absoluteLocation))
+        try
         {
-            ulog("To-be-deleted file or folder not found  " + absoluteLocation, WARNING);
-        }
-        else
-        {
-            try
+            if (!fs::exists(absoluteLocation))
+            {
+                ulog("To-be-deleted file or folder not found  " + absoluteLocation, WARNING);
+            }
+            else
             {
                 // Distinguish between folder and files, mainly for reporting purpose
                 if (fs::is_directory(absoluteLocation))
@@ -502,18 +513,20 @@ bool ywConfigPageUpdate::removeInstalledVersion(ywServerManifest& installedManif
                     ulog("Removed file  " + absoluteLocation, OK);
                 }
             }
-            catch(const std::exception & e)
-            {
-                ulog("Unable to remove file  " + absoluteLocation, ERROR);
-                ulog("File permissions might be configured incorrectly.");
-                ulog("Terminating update procedure.");
-                ulog("Please check your installation settings and rerun the update.");
+        }
+        catch(const std::exception & e)
+        {
+            ulog("Unable to remove file  " + absoluteLocation, ERROR);
+            ulog("File permissions might be configured incorrectly.");
+            ulog("Terminating update procedure.");
+            ulog("Please check your installation settings and rerun the update.");
 
-                // Stopping update
-                return false;
-            }
+            // Stopping update
+            return false;
         }
     }
+
+    ulog("");
 
     return true;
 }
@@ -535,18 +548,18 @@ bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::sh
         std::string outputFilename=getAbsoluteInstallationPath(zipEntry->GetFullName());
         fs::path outputFilepath(outputFilename);
 
-        // Check if file already exists. If so, we can skip extraction and go on.
-        if (fs::exists(outputFilepath))
-        {
-            ulog("File exists  " + outputFilename, OK);
-
-            // Skip extraction of file
-            continue;
-        }
-
-        // ## Make sure that folder(s) needed for extraction exist
         try
         {
+            // Check if file or directory already exists. If so, we can skip extraction and go on.
+            if (fs::exists(outputFilepath))
+            {
+                ulog("Item exists  " + outputFilename, OK);
+
+                // Skip extraction of file
+                continue;
+            }
+
+            // ## Make sure that folder(s) needed for extraction exist
             fs::create_directories(outputFilepath.parent_path());
         }
         catch(const std::exception & e)
@@ -592,6 +605,11 @@ bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::sh
                     // Set executable bit for extracted file (only for file owner, for security reason)
                     fs::permissions(outputFilepath, fs::perms(0700));
                 }
+                else
+                {
+                    // If not executable, set to read/write for the server owner only
+                    fs::permissions(outputFilepath, fs::perms(0600));
+                }
             }
             catch(const std::exception & e)
             {
@@ -604,6 +622,8 @@ bool ywConfigPageUpdate::installUpdate(ywServerManifest& updateManifest, std::sh
             }
         }
     }
+
+    ulog("");
 
     return updateWithoutErrors;
 }
@@ -694,7 +714,7 @@ void ywConfigPageUpdate::showUpdateResult(bool isSuccess, WString newVersionStri
     if (!isSuccess)
     {
         title="Update Failed";
-        text="A problem with the updated occured.<br /><br />Please review the update log below to identify the problem and find instructions how to proceed.";
+        text="<span style=\"color: #B00;\"><strong>A problem with the updated occured.</strong></span><br /><br />Please review the update log below to identify the problem and find instructions how to proceed.";
     }
 
     WDialog resultDialog(title);

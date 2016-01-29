@@ -451,7 +451,12 @@ void ywConfigPageModules::showUploadModuleDialog()
                     if (isExecutable)
                     {
                         // Set executable bit for extracted file (only for file owner, for security reason)
-                        fs::permissions( outFilePath, fs::perms(0700));
+                        fs::permissions(outFilePath, fs::perms(0700));
+                    }
+                    else
+                    {
+                        // If not executable, set to read/write for the server owner only
+                        fs::permissions(outFilePath, fs::perms(0600));
                     }
                 }
             }
