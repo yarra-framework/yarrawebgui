@@ -38,7 +38,7 @@ bool ywModuleManifest::readManifest(WString filename)
         author=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Author",WString(author).toUTF8()));
         description=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Description",WString(description).toUTF8()));
         homepage=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Homepage",WString(homepage).toUTF8()));
-        downloadURL=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.DDownloadURL",WString(downloadURL).toUTF8()));
+        downloadURL=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.DownloadURL",WString(downloadURL).toUTF8()));
     }
     catch(const std::exception & e)
     {
