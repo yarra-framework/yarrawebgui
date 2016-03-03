@@ -1165,7 +1165,7 @@ void ywQueuePage::patchTask(WString taskName, int mode)
     accLabel->setBuddy(accEdit);
     accEdit->setText(accValue);
 
-    Wt::WRegExpValidator *accValidator=new Wt::WRegExpValidator("[0-9]{0,16}");
+    Wt::WRegExpValidator *accValidator=new Wt::WRegExpValidator("[a-zA-Z0-9]{0,16}");
     accValidator->setMandatory(true);
     accEdit->setValidator(accValidator);
 
