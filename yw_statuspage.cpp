@@ -73,10 +73,19 @@ ywStatusPage::ywStatusPage(ywApplication* parent)
     WContainerWidget* statusContainer=new WContainerWidget();
     Wt::WVBoxLayout*  statusLayout=new Wt::WVBoxLayout();
     statusContainer->setLayout(statusLayout);
-    statusWidget=new Wt::WTemplate();
-    statusScrollArea=new Wt::WScrollArea();
-    statusScrollArea->setWidget(statusWidget);
-    statusLayout->addWidget(statusScrollArea);
+
+    statusWidget=new Wt::WTemplate();    
+    statusLayout->addWidget(statusWidget);
+
+    WString newsWidgetCode="<h4>Latest Yarra News</h4>";
+    newsWidgetCode+=       "<iframe src=\"https://yarra.rocks/doc/news/\" width=\"100%\" height=\"150px\" style=\"border:none\"></iframe>";
+
+    WText* newsWidget=new WText();
+    newsWidget->setTextFormat(XHTMLUnsafeText);
+    newsWidget->setText(newsWidgetCode);
+
+    statusLayout->addStretch(1);
+    statusLayout->addWidget(newsWidget,0);
 
     // Tab for the server log
     WContainerWidget* serverLogContainer=new WContainerWidget();
@@ -188,7 +197,6 @@ void ywStatusPage::refreshStatus()
     }
 
     widgetText+="</p>";
-
 
     statusWidget->setTemplateText(widgetText,XHTMLUnsafeText);
 }

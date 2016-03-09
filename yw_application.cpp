@@ -131,6 +131,19 @@ void ywApplication::performLogin()
         leftMenu->addItem("Configuration", configPage)->triggered().connect(std::bind([=] () {
             configPage->refreshStatus();
         }));
+
+        // Embed the support forum from the yarra homepage
+        WText* iframeText=new WText();
+        iframeText->setTextFormat(XHTMLUnsafeText);
+        iframeText->setText("<iframe src=\"https://yarra.rocks/forum/index.php\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
+
+        leftMenu->addItem("Support", iframeText)->triggered().connect(std::bind([=] () {
+            iframeText->setText("");
+            iframeText->refresh();
+            iframeText->setText("<iframe src=\"https://yarra.rocks/forum/index.php\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
+            //iframeText->refresh();
+        }));
+
     }
 
     navbar->addMenu(leftMenu);

@@ -348,10 +348,21 @@ h3,
 
 .Wt-tree .active {
   background-color: #580F8B;
-}
+}		
 
 .progress-bar {
   background-color: #580F8B;
+}
+
+.loginborder {
+  background-color: rgba(255, 255, 255, 0);
+}
+
+.loginback {
+  background-color: #580F8B;
+  background-image: url("yarra_login.png");
+  background-repeat: repeat;
+  background-position: left center;
 }
 
 

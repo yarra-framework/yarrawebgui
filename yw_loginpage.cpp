@@ -15,6 +15,7 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     this->setLayout(layout);
+    this->addStyleClass("loginback");
 
     WContainerWidget* panelcontainer=new WContainerWidget();
     panelcontainer->resize(250, 300);
@@ -23,19 +24,18 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     panel->addStyleClass("centered");
     panel->setTitle("YarraServer: "+app->configuration->serverName);
     panel->addStyleClass("modal-content");
-    //panel->addStyleClass("panel-primary");
+    panel->addStyleClass("panel-primary");
 
-    // TODO: Define CSS class for background color
     WContainerWidget* haligncontainer=new WContainerWidget();
-    haligncontainer->decorationStyle().setBackgroundColor(WColor(128,128,128));
+    haligncontainer->addStyleClass("loginborder");
     Wt::WHBoxLayout *halignlayout=new Wt::WHBoxLayout();
     halignlayout->setContentsMargins(0, 0, 0, 0);
     haligncontainer->setLayout(halignlayout);
 
     WContainerWidget* dummyContainer1=new WContainerWidget();
-    dummyContainer1->decorationStyle().setBackgroundColor(WColor(128,128,128));
+    dummyContainer1->addStyleClass("loginborder");
     WContainerWidget* dummyContainer2=new WContainerWidget();
-    dummyContainer2->decorationStyle().setBackgroundColor(WColor(128,128,128));
+    dummyContainer2->addStyleClass("loginborder");
 
     layout->addWidget(dummyContainer1,1);
     layout->addWidget(haligncontainer);
