@@ -16,6 +16,7 @@ public:
     WString description;
     WString homepage;
     WString downloadURL;
+    bool    requiresMatlab;
 
     bool readManifest(WString filename);
     WString renderInformation();

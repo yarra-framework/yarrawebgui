@@ -78,7 +78,7 @@ ywStatusPage::ywStatusPage(ywApplication* parent)
     statusLayout->addWidget(statusWidget);
 
     WString newsWidgetCode="<h4>Latest Yarra News</h4>";
-    newsWidgetCode+=       "<iframe src=\"https://yarra.rocks/doc/news/\" width=\"100%\" height=\"150px\" style=\"border:none\"></iframe>";
+    newsWidgetCode+=       "<iframe src=\"https://yarra.rocks/doc/news/\" width=\"100%\" height=\"120px\" style=\"border:none\"></iframe>";
 
     WText* newsWidget=new WText();
     newsWidget->setTextFormat(XHTMLUnsafeText);

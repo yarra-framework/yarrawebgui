@@ -9,12 +9,13 @@ namespace fs = boost::filesystem;
 
 ywModuleManifest::ywModuleManifest()
 {
-    name="";
-    version="";
-    author="";
-    description="";
-    homepage="";
-    downloadURL="";
+    name          ="";
+    version       ="";
+    author        ="";
+    description   ="";
+    homepage      ="";
+    downloadURL   ="";
+    requiresMatlab=false;
 }
 
 
@@ -33,12 +34,13 @@ bool ywModuleManifest::readManifest(WString filename)
         // Read all values from the manifest file
         boost::property_tree::ini_parser::read_ini(filename.toUTF8(), manifestFile);
 
-        name=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Name",WString(name).toUTF8()));
-        version=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Version",WString(version).toUTF8()));
-        author=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Author",WString(author).toUTF8()));
+        name       =WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Name",       WString(name).toUTF8()));
+        version    =WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Version",    WString(version).toUTF8()));
+        author     =WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Author",     WString(author).toUTF8()));
         description=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Description",WString(description).toUTF8()));
-        homepage=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Homepage",WString(homepage).toUTF8()));
+        homepage   =WString::fromUTF8(manifestFile.get<std::string>("YarraModule.Homepage",   WString(homepage).toUTF8()));
         downloadURL=WString::fromUTF8(manifestFile.get<std::string>("YarraModule.DownloadURL",WString(downloadURL).toUTF8()));
+        requiresMatlab=manifestFile.get<bool>("YarraModule.RequiresMatlab",requiresMatlab);
     }
     catch(const std::exception & e)
     {
@@ -68,7 +70,15 @@ WString ywModuleManifest::renderInformation()
 {
     WString infoString="";
 
-    infoString= "<div style=\"margin-bottom: 6px; \"><strong>"+name+"</strong><br /></div>";
+    infoString= "<div style=\"margin-bottom: 6px; \"><strong>"+name+"</strong>";
+
+    if (requiresMatlab)
+    {
+        infoString+="&nbsp;&nbsp;&nbsp;&nbsp;<span style=\"background-color: #2f7eb2 !important;\" class=\"label label-info\">MATLAB</span>";
+    }
+    infoString+="<br /></div>";
+
+
 
     if (!description.empty())
     {
