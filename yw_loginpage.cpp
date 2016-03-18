@@ -18,7 +18,7 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
     this->addStyleClass("loginback");
 
     WContainerWidget* panelcontainer=new WContainerWidget();
-    panelcontainer->resize(250, 300);
+    panelcontainer->resize(260, 300);
 
     Wt::WPanel *panel = new Wt::WPanel(panelcontainer);
     panel->addStyleClass("centered");
