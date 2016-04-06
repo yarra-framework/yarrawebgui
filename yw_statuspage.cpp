@@ -140,7 +140,7 @@ ywStatusPage* ywStatusPage::createInstance(ywApplication* parent)
 }
 
 
-void ywStatusPage::tabChanged(int tab)
+void ywStatusPage::tabChanged(int /*tab*/)
 {
     refreshCurrentTab();
 }
@@ -205,14 +205,14 @@ void ywStatusPage::refreshStatus()
 }
 
 
+#define YW_MAXLINES_STATUSLOG 2000
+
 
 void ywStatusPage::refreshServerLog()
 {
     WString serverLogFilename=app->server.getServerLogFilename();
 
     WString widgetText="";
-
-    std::string line;
     std::ifstream logfile(serverLogFilename.toUTF8());
 
     if(!logfile) //Always test the file open.
@@ -221,10 +221,29 @@ void ywStatusPage::refreshServerLog()
     }
     else
     {
+        std::vector<std::string> lines_in_order;
+        std::string line;
+
+        // Read log in buffer first
         while (std::getline(logfile, line))
         {
-            widgetText+=WString::fromUTF8(line)+"\n";
+            lines_in_order.push_back(line);
         }
+
+        // Display only 2000 lines or less to keep the UI responsive
+        size_t startLine=0;
+        if (lines_in_order.size()>YW_MAXLINES_STATUSLOG)
+        {
+            startLine=lines_in_order.size()-YW_MAXLINES_STATUSLOG;
+        }
+
+        // Write lines into widget
+        for (size_t i=startLine; i<lines_in_order.size(); i++)
+        {
+            widgetText+=WString::fromUTF8(lines_in_order.at(i))+"\n";
+        }
+
+        lines_in_order.clear();
         logfile.close();
     }
 
@@ -244,7 +263,6 @@ void ywStatusPage::refreshTaskLog()
     }
     else
     {
-        std::string line;
         std::ifstream logfile(taskLogFilename.toUTF8());
 
         if(!logfile)
@@ -253,10 +271,29 @@ void ywStatusPage::refreshTaskLog()
         }
         else
         {
+            std::vector<std::string> lines_in_order;
+            std::string line;
+
+            // Read log in buffer first
             while (std::getline(logfile, line))
             {
-                widgetText+=WString::fromUTF8(line)+"\n";
+                lines_in_order.push_back(line);
             }
+
+            // Display only 2000 lines or less
+            size_t startLine=0;
+            if (lines_in_order.size()>YW_MAXLINES_STATUSLOG)
+            {
+                startLine=lines_in_order.size()-YW_MAXLINES_STATUSLOG;
+            }
+
+            // Write lines into widget
+            for (size_t i=startLine; i<lines_in_order.size(); i++)
+            {
+                widgetText+=WString::fromUTF8(lines_in_order.at(i))+"\n";
+            }
+
+            lines_in_order.clear();
             logfile.close();
         }
     }

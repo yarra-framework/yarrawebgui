@@ -178,10 +178,10 @@ void ywLogPage::refreshLogs()
     {
         if ( fs::exists(logDir) && fs::is_directory(logDir))
         {
-            // TODO: Check if file extension is ".log"
             for( fs::directory_iterator dir_iter(logDir) ; dir_iter != end_iter ; ++dir_iter)
             {
-                if ( (fs::is_regular_file(dir_iter->status()) && (dir_iter->path().filename()!="yarra.log") ))
+                if ( (fs::is_regular_file(dir_iter->status())) && (dir_iter->path().filename()!="yarra.log")
+                     && (dir_iter->path().extension()==".log") )
                 {
                     result_set.insert(result_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
                 }
@@ -254,9 +254,19 @@ void ywLogPage::showLog(int index)
         }
         else
         {
+            int lineCount=0;
+
             while (std::getline(logfile, line))
             {
                 widgetText+=WString::fromUTF8(line)+"\n";
+                lineCount++;
+
+                // Stop after 5000 lines due to avoid unresponsiveness of the UI
+                if (lineCount>5000)
+                {
+                    widgetText+="...\n\n >> Download file to see complete log information <<\n";
+                    break;
+                }
             }
             logfile.close();
         }
