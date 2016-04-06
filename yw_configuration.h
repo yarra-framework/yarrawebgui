@@ -43,6 +43,8 @@ public:
 
     bool disableModuleInstallation;
     bool disableModeEditing;
+    bool disableSupportForum;
+    bool disableYarraNews;
 
     bool configurationValid;
 

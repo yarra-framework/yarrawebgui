@@ -133,17 +133,18 @@ void ywApplication::performLogin()
         }));
 
         // Embed the support forum from the yarra homepage
-        WText* iframeText=new WText();
-        iframeText->setTextFormat(XHTMLUnsafeText);
-        iframeText->setText("<iframe src=\"https://yarra.rocks/forum/index.php\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
-
-        leftMenu->addItem("Support", iframeText)->triggered().connect(std::bind([=] () {
-            iframeText->setText("");
-            iframeText->refresh();
+        if (!configuration->disableSupportForum)
+        {
+            WText* iframeText=new WText();
+            iframeText->setTextFormat(XHTMLUnsafeText);
             iframeText->setText("<iframe src=\"https://yarra.rocks/forum/index.php\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
-            //iframeText->refresh();
-        }));
 
+            leftMenu->addItem("Support", iframeText)->triggered().connect(std::bind([=] () {
+                iframeText->setText("");
+                iframeText->refresh();
+                iframeText->setText("<iframe src=\"https://yarra.rocks/forum/index.php\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
+            }));
+        }
     }
 
     navbar->addMenu(leftMenu);

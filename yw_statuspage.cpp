@@ -76,16 +76,19 @@ ywStatusPage::ywStatusPage(ywApplication* parent)
 
     statusWidget=new Wt::WTemplate();    
     statusLayout->addWidget(statusWidget);
-
-    WString newsWidgetCode="<h4>Latest Yarra News</h4>";
-    newsWidgetCode+=       "<iframe src=\"https://yarra.rocks/doc/news/\" width=\"100%\" height=\"120px\" style=\"border:none\"></iframe>";
-
-    WText* newsWidget=new WText();
-    newsWidget->setTextFormat(XHTMLUnsafeText);
-    newsWidget->setText(newsWidgetCode);
-
     statusLayout->addStretch(1);
-    statusLayout->addWidget(newsWidget,0);
+
+    if (!app->configuration->disableYarraNews)
+    {
+        WString newsWidgetCode="<h4>Latest Yarra News</h4>";
+        newsWidgetCode+=       "<iframe src=\"https://yarra.rocks/doc/news/\" width=\"100%\" height=\"120px\" style=\"border:none\"></iframe>";
+
+        WText* newsWidget=new WText();
+        newsWidget->setTextFormat(XHTMLUnsafeText);
+        newsWidget->setText(newsWidgetCode);
+
+        statusLayout->addWidget(newsWidget,0);
+    }
 
     // Tab for the server log
     WContainerWidget* serverLogContainer=new WContainerWidget();

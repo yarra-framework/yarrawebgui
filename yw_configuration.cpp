@@ -33,6 +33,8 @@ ywConfiguration::ywConfiguration()
 
     disableModuleInstallation=false;
     disableModeEditing       =false;
+    disableSupportForum      =false;
+    disableYarraNews         =false;
 }
 
 
@@ -95,7 +97,9 @@ void ywConfiguration::loadConfiguration()
 
         // Read optional security settings
         disableModuleInstallation=inifile.get<bool>("Setup.DisableModuleInstallation",disableModuleInstallation);
-        disableModeEditing       =inifile.get<bool>("Setup.DisableModeEditing",disableModeEditing);
+        disableModeEditing       =inifile.get<bool>("Setup.DisableModeEditing"       ,disableModeEditing);
+        disableSupportForum      =inifile.get<bool>("Setup.DisableSupportForum"      ,disableSupportForum);
+        disableYarraNews         =inifile.get<bool>("Setup.DisableYarraNews"         ,disableYarraNews);
 
         // Now try to read the yarra config file
         boost::property_tree::ptree serverIni;
