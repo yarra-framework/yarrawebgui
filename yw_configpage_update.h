@@ -57,6 +57,8 @@ public:
     bool isSufficientDiskSpaceAvailable(size_t neededSpace);
 
     void ulog(WString message, LogMessageType type=INFO);
+
+    void showRestartMessage();
 };
 
 

@@ -33,6 +33,7 @@ public:
     bool startServer();
     bool stopServer();
     bool killServer();
+    bool restartWebGUI();
 
     int serverStatus;
     WString serverReply;

@@ -470,7 +470,16 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
             // Reboot the webgui by terminating the current instance (will be restarted through upstart service)
             std::cout << std::endl << "## Enforcing restart of WebGUI after server update ##" << std::endl << std::endl;
 
+            // First, try calling "sudo restart yarrawebgui". This should work if the webgui is
+            // running as daemon and if the command has been added to the sudoers file
+            parent->app->server.restartWebGUI();
+
+            // If the process is still running, try killing the process group. This does not always work.
             killpg(getppid(),SIGTERM);
+
+            // Show message in 2 sec if the process is still running now
+            WTimer::singleShot(2000, this, &ywConfigPageUpdate::showRestartMessage);
+
         }
     }
     catch(const std::exception & e)
@@ -480,6 +489,12 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
 
     // Close the upload dialog
     uploadModuleDialog->reject();
+}
+
+
+void ywConfigPageUpdate::showRestartMessage()
+{
+    Wt::WMessageBox::show("Manual Restart Required", "It seems that restarting the WebGUI automatically wasn't possible. Please open a terminal shell and type 'sudo stop yarrawebgui; sudo start yarrawebgui' or reboot your server.", Wt::Ok);
 }
 
 

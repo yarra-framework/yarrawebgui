@@ -32,6 +32,7 @@
 #include <Wt/WComboBox>
 #include <Wt/WLabel>
 #include <Wt/WRegExpValidator>
+#include <Wt/WServer>
 
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -79,26 +80,46 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
     configMenu->addItem("Reconstruction Modes", page0)->triggered().connect(std::bind([=] () {
         refreshSubpage();
     }));
+    pages.push_back(PAGE_MODES);
 
     page1=new ywConfigPageModeList(this);
     configMenu->addItem("Mode List", page1)->triggered().connect(std::bind([=] () {
         refreshSubpage();
     }));
+    pages.push_back(PAGE_MODELIST);
 
     page2=new ywConfigPageServer(this);
     configMenu->addItem("Server Settings", page2)->triggered().connect(std::bind([=] () {
         refreshSubpage();
     }));
+    pages.push_back(PAGE_SERVERSETTINGS);
+
+    // Show the server list tab only if the file YarraServerList.cfg is existing
+    WString serverListName=app->configuration->yarraQueuePath+"/YarraServerList.cfg";
+    if (fs::exists(serverListName.toUTF8()))
+    {
+        pageServerList=new ywConfigPageServerList(this);
+        configMenu->addItem("Server List", pageServerList)->triggered().connect(std::bind([=] () {
+            refreshSubpage();
+        }));
+        pages.push_back(PAGE_SERVERLIST);
+    }
+    else
+    {
+        pageServerList=0;
+    }
 
     pageUpdate=new ywConfigPageUpdate(this);
     configMenu->addItem("Server Update", pageUpdate)->triggered().connect(std::bind([=] () {
         refreshSubpage();
     }));
+    pages.push_back(PAGE_SERVERUPDATE);
 
     pageModules=new ywConfigPageModules(this);
     configMenu->addItem("Installed Modules", pageModules)->triggered().connect(std::bind([=] () {
         refreshSubpage();
     }));
+    pages.push_back(PAGE_MODULES);
 
     configPageLayout->addWidget(configMenu);
     configPageLayout->addWidget(configContents,1);
@@ -128,23 +149,33 @@ void ywConfigPage::refreshStatus()
 
 void ywConfigPage::refreshSubpage()
 {
-    switch (configMenu->currentIndex())
+    PAGES currentPage=pages.at(configMenu->currentIndex());
+
+    if ((currentPage<0) || (currentPage>4))
     {
-    case 0:
+        currentPage=PAGE_MODES;
+    }
+
+    switch (currentPage)
+    {
+    case PAGE_MODES:
     default:
         page0->refreshPage();
         break;
-    case 1:
+    case PAGE_MODELIST:
         page1->refreshEditor();
         break;
-    case 2:
+    case PAGE_SERVERSETTINGS:
         page2->refreshEditor();
         break;
-    case 3:
+    case PAGE_SERVERUPDATE:
         pageUpdate->refreshPage();
         break;
-    case 4:
+    case PAGE_MODULES:
         pageModules->refreshPage();
+        break;
+    case PAGE_SERVERLIST:
+        pageServerList->refreshEditor();
         break;
     }
 }
@@ -164,8 +195,6 @@ void ywConfigPage::showErrorMessage(WString errorMessage)
     }));
     messageBox->show();
 }
-
-
 
 
 ywConfigPageServer::ywConfigPageServer(ywConfigPage* pageParent)
@@ -288,7 +317,6 @@ bool ywConfigPageServer::writeServerConfig(WString newConfig)
 
     return true;
 }
-
 
 
 ywConfigPageModeList::ywConfigPageModeList(ywConfigPage* pageParent)
@@ -457,6 +485,165 @@ bool ywConfigPageModeList::writeModeList(WString newConfig)
     else
     {
         WTimer::singleShot(500, this, &ywConfigPageModeList::refreshEditor);
+    }
+
+    return true;
+}
+
+
+ywConfigPageServerList::ywConfigPageServerList(ywConfigPage* pageParent)
+ : WContainerWidget()
+{
+    parent=pageParent;
+
+    Wt::WVBoxLayout* subLayout = new Wt::WVBoxLayout();
+    this->setLayout(subLayout);
+    subLayout->setContentsMargins(0, 0, 0, 0);
+
+    Wt::WText* heading=new Wt::WText("<h3>Server List</h3>");
+    heading->setMargin(6, Wt::Bottom);
+    subLayout->insertWidget(0,heading,0);
+
+    editor = new Wt::WTextArea();
+    subLayout->insertWidget(1,editor,1);
+    editor->setJavaScriptMember("spellcheck","false");
+
+    WContainerWidget* innerBtnContainer=new WContainerWidget();
+    innerBtnContainer->setMargin(10, Wt::Top);
+    Wt::WHBoxLayout* innerLayout = new Wt::WHBoxLayout();
+    innerBtnContainer->setLayout(innerLayout);
+    innerLayout->setContentsMargins(0, 0, 0, 0);
+    innerLayout->setSpacing(4);
+
+    saveBtn=new Wt::WPushButton("Save");
+    saveBtn->setStyleClass("btn-primary");
+    saveBtn->clicked().connect(std::bind([=] () {
+        writeServerList(editor->text());
+    }));
+
+    Wt::WPushButton* refreshBtn=new Wt::WPushButton("Refresh");
+    refreshBtn->setStyleClass("btn");
+    refreshBtn->clicked().connect(std::bind([=] () {
+        refreshEditor();
+    }));
+
+    innerLayout->insertWidget(0,saveBtn,0,Wt::AlignLeft);
+    innerLayout->insertWidget(1,refreshBtn,0,Wt::AlignLeft);
+    innerLayout->insertWidget(2,new Wt::WContainerWidget,1);
+
+    refreshEditor();
+
+    subLayout->insertWidget(2,innerBtnContainer,0);
+}
+
+
+void ywConfigPageServerList::refreshEditor()
+{
+    editor->setText(readServerList());
+}
+
+
+WString ywConfigPageServerList::readServerList()
+{
+    WString fileName=parent->app->configuration->yarraQueuePath+"/YarraServerList.cfg";
+
+    // Read the task file into a WString
+    std::string line;
+    std::ifstream serverListFile(fileName.toUTF8());
+    WString fileContent="";
+
+    if(!serverListFile)
+    {
+        saveBtn->setEnabled(false);
+        return WString("Unable to read server list file");
+    }
+    else
+    {
+        while (std::getline(serverListFile, line))
+        {
+            fileContent+=WString::fromUTF8(line)+"\n";
+        }
+    }
+    serverListFile.close();
+    saveBtn->setEnabled(true);
+
+    return fileContent;
+}
+
+
+bool ywConfigPageServerList::writeServerList(WString newConfig)
+{
+    if (parent->app->configuration->disableModeEditing)
+    {
+        Wt::WMessageBox::show("Security Policy", "Modification of configuration via the WebGUI has been disabled.", Wt::Ok);
+        return true;
+    }
+
+    WString fileName=parent->app->configuration->yarraQueuePath+"/YarraServerList.cfg";
+
+    if (!fs::exists(fileName.toUTF8()))
+    {
+        parent->showErrorMessage("Cannot find server list file.");
+        WTimer::singleShot(500, this, &ywConfigPageServerList::refreshEditor);
+        return false;
+    }
+
+    // First, create a lockfile in the queue directory
+    if (!ywHelper::lockFile(fileName.toUTF8()))
+    {
+        parent->showErrorMessage("Locking the file not possible. The file is probably being edited by another user.");
+        WTimer::singleShot(500, this, &ywConfigPageServerList::refreshEditor);
+        return false;
+    }
+
+    // chmod 640 on file name!
+    if (chmod(fileName.toUTF8().data(),S_IRUSR | S_IWUSR) != 0)
+    {
+        parent->showErrorMessage("Cannot change write permission of server list file. Check file permissions.");
+        WTimer::singleShot(500, this, &ywConfigPageServerList::refreshEditor);
+        ywHelper::unlockFile(fileName.toUTF8());
+        return false;
+    }
+
+    // Write the content to the file
+    std::ofstream configFile(fileName.toUTF8(), std::ofstream::out | std::ofstream::trunc);
+
+    bool writeError=false;
+
+    // Error handling
+    if (!configFile.is_open())
+    {
+        writeError=true;
+        parent->showErrorMessage("Cannot write mode list. Check server configuration and file permissions.");
+    }
+
+    if (!writeError)
+    {
+        configFile << newConfig.toUTF8();
+        configFile.flush();
+        configFile.close();
+    }
+
+    // chmod 440 on file name
+    chmod(fileName.toUTF8().data(),S_IRUSR | S_IRGRP);
+
+    ywHelper::unlockFile(fileName.toUTF8());
+
+    if (!writeError)
+    {
+        Wt::WMessageBox *messageBox = new Wt::WMessageBox
+           ("Server List Saved",
+            "<p>The server list has been updated.</p>",
+            Wt::Information, Wt::Ok);
+        messageBox->setModal(true);
+        messageBox->buttonClicked().connect(std::bind([=] () {
+            delete messageBox;
+        }));
+        messageBox->show();
+    }
+    else
+    {
+        WTimer::singleShot(500, this, &ywConfigPageServerList::refreshEditor);
     }
 
     return true;

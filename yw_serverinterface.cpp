@@ -205,3 +205,20 @@ bool ywServerInterface::killServer()
 }
 
 
+bool ywServerInterface::restartWebGUI()
+{
+    WString statusCmd="./yarradexec sudo restart yarrawebgui";
+
+    FILE* process=popen(statusCmd.toUTF8().data(), "r");
+    if (process==NULL)
+    {
+        return false;
+    }
+
+    // No waiting for the end of the process
+    pclose(process);
+
+    // We should not reach this...
+    return true;
+}
+

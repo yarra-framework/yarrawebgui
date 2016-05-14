@@ -13,11 +13,23 @@ class ywConfigPageModeList;
 class ywConfigPageServer;
 class ywConfigPageModules;
 class ywConfigPageUpdate;
+class ywConfigPageServerList;
 
 
 class ywConfigPage : public Wt::WContainerWidget
 {
 public:
+
+    enum PAGES
+    {
+        PAGE_MODES=0,
+        PAGE_MODELIST,
+        PAGE_SERVERSETTINGS,
+        PAGE_SERVERUPDATE,
+        PAGE_MODULES,
+        PAGE_SERVERLIST
+    };
+
     ywConfigPage(ywApplication* parent);
 
     static ywConfigPage* createInstance(ywApplication *parent);
@@ -31,11 +43,14 @@ public:
     Wt::WMenu *configMenu;
     Wt::WText* serverStatusLabel;
 
-    ywConfigPageModes*    page0;
-    ywConfigPageModeList* page1;
-    ywConfigPageServer*   page2;
-    ywConfigPageModules*  pageModules;
-    ywConfigPageUpdate*   pageUpdate;
+    std::vector<PAGES> pages;
+
+    ywConfigPageModes*      page0;
+    ywConfigPageModeList*   page1;
+    ywConfigPageServer*     page2;
+    ywConfigPageModules*    pageModules;
+    ywConfigPageUpdate*     pageUpdate;
+    ywConfigPageServerList* pageServerList;
 };
 
 
@@ -68,6 +83,20 @@ public:
     void refreshEditor();
 };
 
+
+class ywConfigPageServerList : public Wt::WContainerWidget
+{
+public:
+    ywConfigPageServerList(ywConfigPage* pageParent);
+
+    ywConfigPage* parent;
+    Wt::WPushButton* saveBtn;
+    Wt::WTextArea* editor;
+
+    WString readServerList();
+    bool writeServerList(WString newConfig);
+    void refreshEditor();
+};
 
 
 class ywConfigPageModes : public Wt::WContainerWidget
