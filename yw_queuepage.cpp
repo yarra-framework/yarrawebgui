@@ -50,10 +50,10 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
  : WContainerWidget()
 {
     app=parent;
-    queuePath=app->configuration->yarraQueuePath;
-    failPath=app->configuration->yarraFailPath;
-    workPath=app->configuration->yarraWorkPath;
-
+    queuePath  =app->configuration->yarraQueuePath;
+    failPath   =app->configuration->yarraFailPath;
+    workPath   =app->configuration->yarraWorkPath;
+    storagePath=app->configuration->yarraStoragePath;
 
     // Page container
     Wt::WVBoxLayout* queuePageLayout = new Wt::WVBoxLayout();
@@ -108,10 +108,34 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     failcenterLayout->addWidget(failtaskContainer, 0, Wt::AlignCenter);
     failLayout->addWidget(failscrollArea);
 
+    // Finished List container
+    WContainerWidget* finishedContainer=new WContainerWidget();
+    Wt::WVBoxLayout*  finishedLayout=new Wt::WVBoxLayout();
+    finishedLayout->setContentsMargins(0, 0, 0, 0);
+    finishedContainer->setLayout(finishedLayout);
+
+    Wt::WContainerWidget* finishedcenterContainer = new Wt::WContainerWidget();
+    Wt::WHBoxLayout* finishedcenterLayout = new Wt::WHBoxLayout();
+    finishedcenterLayout->setContentsMargins(0, 20, 0, 0);
+    finishedcenterLayout->setSpacing(0);
+    finishedcenterContainer->setLayout(finishedcenterLayout);
+
+    Wt::WContainerWidget* finishedtaskContainer = new Wt::WContainerWidget();
+    finishedtaskLayout = new Wt::WVBoxLayout();
+    finishedtaskLayout->setContentsMargins(0, 0, 0, 0);
+    finishedtaskLayout->setSpacing(4);
+    finishedtaskContainer->setLayout(finishedtaskLayout);
+
+    Wt::WScrollArea* finishedscrollArea=new Wt::WScrollArea();
+    finishedscrollArea->setWidget(finishedcenterContainer);
+    finishedcenterLayout->addWidget(finishedtaskContainer, 0, Wt::AlignCenter);
+    finishedLayout->addWidget(finishedscrollArea);
+
     // Tab widget
     tabWidget = new Wt::WTabWidget();
-    tabWidget->addTab(queueContainer, "Queue List", Wt::WTabWidget::PreLoading);
-    tabWidget->addTab(failContainer,  "Fail List",    Wt::WTabWidget::PreLoading);
+    tabWidget->addTab(queueContainer,    "Queued",   Wt::WTabWidget::PreLoading);
+    tabWidget->addTab(failContainer,     "Failed",   Wt::WTabWidget::PreLoading);
+    tabWidget->addTab(finishedContainer, "Finished", Wt::WTabWidget::PreLoading);
     tabWidget->currentChanged().connect(this, &ywQueuePage::tabChanged);
     tabWidget->setStyleClass("tabwidget");
 
@@ -145,6 +169,9 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     failtaskContainer->resize(800,Wt::WLength::Auto);
     failtaskContainer->setMinimumSize(600,Wt::WLength::Auto);
     failtaskContainer->setMaximumSize(800,Wt::WLength::Auto);
+    finishedtaskContainer->resize(800,Wt::WLength::Auto);
+    finishedtaskContainer->setMinimumSize(600,Wt::WLength::Auto);
+    finishedtaskContainer->setMaximumSize(800,Wt::WLength::Auto);
 
     refreshLists();
 }
@@ -172,6 +199,10 @@ void ywQueuePage::refreshLists()
     {
         refreshFailList();
     }
+    if (tabWidget->currentIndex()==2)
+    {
+        refreshFinishedList();
+    }
 }
 
 
@@ -198,6 +229,10 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
         break;
     case MODE_FAIL:
         panel->addStyleClass("panelqueue panel-fail");
+        break;
+    case MODE_FINISHED:
+        // TODO: Define own class for finished tasks
+        panel->addStyleClass("panelqueue panel-jobnormal");
         break;
     }
     panel->addStyleClass("modal-content");
@@ -240,7 +275,7 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
             showInfo(title,mode);
         }));
 
-        if (mode==MODE_FAIL)
+        if ((mode==MODE_FAIL) || (mode==MODE_FINISHED))
         {            
             popup->addSeparator();
             popup->addItem("Restart")->triggered().connect(std::bind([=] () {
@@ -248,7 +283,7 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
             }));
         }
 
-        if ((mode!=MODE_PROC) && (mode!=MODE_FAIL))
+        if ((mode!=MODE_PROC) && (mode!=MODE_FAIL) && (mode!=MODE_FINISHED))
         {
             popup->addSeparator();
             if (mode!=MODE_NORMAL)
@@ -290,7 +325,6 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
                     editTaskFile(title, mode);
                 }));
             }
-
         }
 
         WPushButton* button = new Wt::WPushButton("Edit");
@@ -308,10 +342,10 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
     WString infoText="";
     WString fileName=getFullTaskFileName(taskName, taskType);
 
-    if (taskType==MODE_FAIL)
+    if ((taskType==MODE_FAIL) || (taskType==MODE_FINISHED))
     {
         // Find the full name of the task file (which might be .task, .task_prio, .task_night)
-        fileName=getFailTaskFile(fileName);
+        fileName=getFolderTaskFile(fileName);
     }
 
     if (taskType==MODE_PROC)
@@ -357,30 +391,29 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
 }
 
 
-
-WString ywQueuePage::getFailTaskFile(WString taskName)
+WString ywQueuePage::getFolderTaskFile(WString taskName)
 {
     const string& ext_prio  =YW_EXT_TASKPRIO;
     const string& ext_normal=YW_EXT_TASK;
     const string& ext_night =YW_EXT_TASKNIGHT;
 
-    fs::path failDir(taskName.toUTF8());
-    fs::directory_iterator fail_iter;
+    fs::path folderDir(taskName.toUTF8());
+    fs::directory_iterator folder_iter;
 
-    WString failTaskName="";
+    WString folderTaskName="";
 
     try
     {
-        if ( fs::exists(failDir) && fs::is_directory(failDir))
+        if ( fs::exists(folderDir) && fs::is_directory(folderDir))
         {
-            for( fs::directory_iterator dir_iter(failDir) ; dir_iter != fail_iter ; ++dir_iter)
+            for( fs::directory_iterator dir_iter(folderDir) ; dir_iter != folder_iter ; ++dir_iter)
             {
                 if ( (fs::is_regular_file(dir_iter->status())) &&
                      ( (dir_iter->path().extension()==ext_prio) || (dir_iter->path().extension()==ext_normal) ||
                        (dir_iter->path().extension()==ext_night) )
                    )
                 {
-                    failTaskName=dir_iter->path().generic_string();
+                    folderTaskName=dir_iter->path().generic_string();
                     break;
                 }
             }
@@ -388,10 +421,10 @@ WString ywQueuePage::getFailTaskFile(WString taskName)
     }
     catch(const boost::filesystem::filesystem_error& e)
     {
-        failTaskName="";
+        folderTaskName="";
     }
 
-    return failTaskName;
+    return folderTaskName;
 }
 
 
@@ -437,10 +470,10 @@ void ywQueuePage::showInfo (WString taskName, int mode)
     WString infoText="";
     WString fileName=getFullTaskFileName(taskName, mode);
 
-    if (mode==MODE_FAIL)
+    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED))
     {
         // Find the full name of the task file (which might be .task, .task_prio, .task_night)
-        fileName=getFailTaskFile(fileName);
+        fileName=getFolderTaskFile(fileName);
     }
 
     if (mode==MODE_PROC)
@@ -528,12 +561,11 @@ void ywQueuePage::refreshFailList()
     // Clear both pages to free-up memory
     failtaskLayout->clear();
     WTimer::singleShot(0, this, &ywQueuePage::clearQueueList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearFinishedList);
 
     WText* failedLabel=new WText("Failed Tasks");
     failtaskLayout->addWidget(failedLabel,Wt::Left);
 
-
-    // Read log directory, except yarra.log
     fs::path failDir(app->configuration->yarraFailPath.toUTF8());
     fs::directory_iterator end_iter;
 
@@ -542,11 +574,11 @@ void ywQueuePage::refreshFailList()
 
     try
     {
-        if ( fs::exists(failDir) && fs::is_directory(failDir))
+        if (fs::exists(failDir) && fs::is_directory(failDir))
         {
-            for( fs::directory_iterator dir_iter(failDir) ; dir_iter != end_iter ; ++dir_iter)
+            for (fs::directory_iterator dir_iter(failDir) ; dir_iter != end_iter ; ++dir_iter)
             {
-                if ( fs::is_directory(dir_iter->status()) )
+                if (fs::is_directory(dir_iter->status()))
                 {
                     result_set.insert(result_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
                 }
@@ -579,9 +611,70 @@ void ywQueuePage::refreshFailList()
 }
 
 
+void ywQueuePage::refreshFinishedList()
+{
+    // Clear both pages to free-up memory
+    finishedtaskLayout->clear();
+    WTimer::singleShot(0, this, &ywQueuePage::clearQueueList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearFailList);
+
+    WText* finishedLabel=new WText("Finished Tasks");
+    finishedtaskLayout->addWidget(finishedLabel,Wt::Left);
+
+    fs::path finishedDir(app->configuration->yarraStoragePath.toUTF8());
+    fs::directory_iterator end_iter;
+
+    typedef std::multimap<std::time_t,  boost::filesystem::path> result_set_t;
+    result_set_t result_set;
+
+    try
+    {
+        if (fs::exists(finishedDir) && fs::is_directory(finishedDir))
+        {
+            for(fs::directory_iterator dir_iter(finishedDir) ; dir_iter != end_iter ; ++dir_iter)
+            {
+                if (fs::is_directory(dir_iter->status()))
+                {
+                    result_set.insert(result_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+    }
+
+    int i=0;
+    // Iterate backwards through the results list
+    for (result_set_t::reverse_iterator ii=result_set.rbegin(); ii!=result_set.rend(); ++ii)
+    {
+        WString dirName=WString((*ii).second.filename().generic_string());
+        finishedtaskLayout->addWidget(createQueuePanel(dirName, MODE_FINISHED),Wt::AlignMiddle);
+        i++;
+
+        // Only show max 100 entries to avoid slow speed.
+        if (i>100)
+        {
+            break;
+        }
+    }
+
+    if (i==0)
+    {
+        finishedLabel->setText("No finished tasks found.");
+    }
+}
+
+
 void ywQueuePage::clearFailList()
 {
     failtaskLayout->clear();
+}
+
+
+void ywQueuePage::clearFinishedList()
+{
+    finishedtaskLayout->clear();
 }
 
 
@@ -599,6 +692,7 @@ void ywQueuePage::refreshQueueList()
 
     taskLayout->clear();
     WTimer::singleShot(0, this, &ywQueuePage::clearFailList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearFinishedList);
 
     namespace fs = boost::filesystem;
 
@@ -755,8 +849,12 @@ WString ywQueuePage::getFullTaskFileName(WString taskName, int mode)
     case MODE_FAIL:
         return failPath+"/"+taskName;
         break;
+    case MODE_FINISHED:
+        return storagePath+"/"+taskName;
+        break;
     case MODE_PROC:
         return workPath;
+        break;
     }
 }
 
@@ -775,8 +873,9 @@ WString ywQueuePage::getTaskFileName(WString taskName, int mode)
     case MODE_NIGHT:
         return taskName+YW_EXT_TASKNIGHT;
         break;
-    case MODE_FAIL:
     case MODE_PROC:
+    case MODE_FAIL:
+    case MODE_FINISHED:
         return taskName;
         break;
     }
@@ -822,10 +921,9 @@ void ywQueuePage::changePriority(WString taskName, int currentPriority, int newP
 }
 
 
-
 void ywQueuePage::deleteTask(WString taskName, int mode)
 {
-    if (mode==MODE_FAIL)
+    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED))
     {
         Wt::WMessageBox box1("Delete Task","<p>Are you sure to delete this task?</p>\
                              <p><strong>Warning:</strong> The data will be lost permanently.</p>", Wt::Question, Wt::No | Wt::Yes);
@@ -838,7 +936,7 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
             // For failed tasks, we only need to delete all file in the task directory
             // and finally delete the task directory
 
-            WString taskPath=getFullTaskFileName(taskName, MODE_FAIL);
+            WString taskPath=getFullTaskFileName(taskName, mode);
 
             fs::path taskDir(taskPath.toUTF8());
             fs::directory_iterator end_iter;
@@ -1314,7 +1412,6 @@ void ywQueuePage::pushbackTask(WString taskName, int mode)
 }
 
 
-
 void ywQueuePage::restartTask(WString taskName, int mode)
 {   
     Wt::WMessageBox box1("Restart Task","<p>Are you sure to move the task back to the task queue?</p>", Wt::Question, Wt::No | Wt::Yes);
@@ -1324,7 +1421,7 @@ void ywQueuePage::restartTask(WString taskName, int mode)
 
     if (box1.buttonResult()==Wt::Yes)
     {
-        WString taskPath=getFullTaskFileName(taskName, MODE_FAIL);
+        WString taskPath=getFullTaskFileName(taskName, mode);
 
         fs::path taskDir(taskPath.toUTF8());
         fs::directory_iterator end_iter;
@@ -1499,10 +1596,10 @@ void ywQueuePage::editTaskFile(WString taskName, int mode)
 {
     WString fileName=getFullTaskFileName(taskName, mode);
 
-    if (mode==MODE_FAIL)
+    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED))
     {
         // Find the full name of the task file (which might be .task, .task_prio, .task_night)
-        fileName=getFailTaskFile(fileName);
+        fileName=getFolderTaskFile(fileName);
     }
 
     if (!fs::exists(fileName.toUTF8()))
@@ -1574,10 +1671,10 @@ void ywQueuePage::doEditTask(WString taskName, int mode, WString newContent)
 {
     WString fileName=getFullTaskFileName(taskName, mode);
 
-    if (mode==MODE_FAIL)
+    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED))
     {
         // Find the full name of the task file (which might be .task, .task_prio, .task_night)
-        fileName=getFailTaskFile(fileName);
+        fileName=getFolderTaskFile(fileName);
     }
 
     if (!fs::exists(fileName.toUTF8()))
@@ -1586,9 +1683,9 @@ void ywQueuePage::doEditTask(WString taskName, int mode, WString newContent)
         return;
     }
 
-    // TODO: Implement lock mechanism for file in fail directory
+    // TODO: Implement lock mechanism for file in fail or finished directory
     //       via generic lock mechanism (for any file)
-    if (mode!=MODE_FAIL)
+    if ((mode!=MODE_FAIL) && (mode!=MODE_FINISHED))
     {
         // First, create a lockfile in the queue directory
         if (!lockTask(taskName))
@@ -1606,7 +1703,7 @@ void ywQueuePage::doEditTask(WString taskName, int mode, WString newContent)
 
     // TODO: Implement lock mechanism for file in fail directory
     //       via generic lock mechanism (for any file)
-    if (mode!=MODE_FAIL)
+    if ((mode!=MODE_FAIL) && (mode!=MODE_FINISHED))
     {
         unlockTask(taskName);
     }
@@ -1614,5 +1711,4 @@ void ywQueuePage::doEditTask(WString taskName, int mode, WString newContent)
     // Launch timer in 100 msec and update status
     WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
 }
-
 

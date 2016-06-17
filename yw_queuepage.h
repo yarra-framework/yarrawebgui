@@ -14,23 +14,27 @@ class ywQueuePage : public Wt::WContainerWidget
 {
 public:
     enum {
-        MODE_PROC  =0,
-        MODE_NORMAL=1,
-        MODE_PRIO  =2,
-        MODE_NIGHT =3,
-        MODE_FAIL  =4
+        MODE_PROC    =0,
+        MODE_NORMAL  =1,
+        MODE_PRIO    =2,
+        MODE_NIGHT   =3,
+        MODE_FAIL    =4,
+        MODE_FINISHED=5
     };
 
     ywQueuePage(ywApplication* parent);
 
     static ywQueuePage* createInstance(ywApplication *parent);
 
-    void refreshFailList();
-    void refreshQueueList();
     void refreshLists();
+    void refreshQueueList();
+    void refreshFailList();
+    void refreshFinishedList();
+
     void tabChanged(int);
-    void clearFailList();
     void clearQueueList();
+    void clearFailList();
+    void clearFinishedList();
 
     void updateTaskInformation(WString taskName, WText* taskWidget, int taskType);
 
@@ -46,8 +50,9 @@ public:
     void editTaskFile(WString taskName, int mode);
     void doEditTask(WString taskName, int mode, WString newContent);
 
-    Wt::WVBoxLayout* failtaskLayout;
     Wt::WVBoxLayout* taskLayout;
+    Wt::WVBoxLayout* failtaskLayout;
+    Wt::WVBoxLayout* finishedtaskLayout;
     Wt::WTabWidget*  tabWidget;
 
     WPanel* createQueuePanel(WString title, int mode);
@@ -56,6 +61,7 @@ public:
     WString queuePath;
     WString failPath;
     WString workPath;
+    WString storagePath;
 
     bool lockTask(WString taskName);
     bool unlockTask(WString taskName);
@@ -64,7 +70,7 @@ public:
     void showErrorMessage(WString errorMessage);
     WString getFullTaskFileName(WString taskName, int mode);
     WString getTaskFileName(WString taskName, int mode);
-    WString getFailTaskFile(WString taskName);
+    WString getFolderTaskFile(WString taskName);
     WString getWorkTaskFile();
 
     bool getAllFilesOfTask(WString taskFileName, WStringList& fileList);
