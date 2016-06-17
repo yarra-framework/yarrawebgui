@@ -293,6 +293,33 @@ h3,
     padding-left: 4px;
 }
 
+
+.panel-finished {
+  border-color: #000000;
+  margin-bottom: 10px;
+}
+.panel-finished > .panel-heading {
+  color: #ffffff;
+  background-color: #0063be;
+  border-color: #0063be;
+  padding-left: 6px;
+}
+.panel-finished > .panel-heading + .panel-collapse > .panel-body {
+  border-top-color: #0063be;
+}
+.panel-finished > .panel-heading .badge {
+  color: #0063be;
+  background-color: #ffffff;
+}
+.panel-finished > .panel-footer + .panel-collapse > .panel-body {
+  border-bottom-color: #0063be;
+}
+.panel-finished .accordion-toggle
+{
+    padding-left: 4px;
+}
+
+
 .panel-proc {
   border-color: #000000;
   margin-bottom: 10px;

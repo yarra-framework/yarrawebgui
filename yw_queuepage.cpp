@@ -133,9 +133,9 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
 
     // Tab widget
     tabWidget = new Wt::WTabWidget();
-    tabWidget->addTab(queueContainer,    "Queued",   Wt::WTabWidget::PreLoading);
-    tabWidget->addTab(failContainer,     "Failed",   Wt::WTabWidget::PreLoading);
-    tabWidget->addTab(finishedContainer, "Finished", Wt::WTabWidget::PreLoading);
+    tabWidget->addTab(queueContainer,    "Scheduled", Wt::WTabWidget::PreLoading);
+    tabWidget->addTab(failContainer,     "Failed",    Wt::WTabWidget::PreLoading);
+    tabWidget->addTab(finishedContainer, "Completed", Wt::WTabWidget::PreLoading);
     tabWidget->currentChanged().connect(this, &ywQueuePage::tabChanged);
     tabWidget->setStyleClass("tabwidget");
 
@@ -231,8 +231,7 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
         panel->addStyleClass("panelqueue panel-fail");
         break;
     case MODE_FINISHED:
-        // TODO: Define own class for finished tasks
-        panel->addStyleClass("panelqueue panel-jobnormal");
+        panel->addStyleClass("panelqueue panel-finished");
         break;
     }
     panel->addStyleClass("modal-content");
