@@ -24,7 +24,7 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     parent=pageParent;
     userModulesPath = boost::filesystem::path{parent->app->configuration->yarraModulesUserPath.toUTF8()};
     coreModulesPath = boost::filesystem::path{parent->app->configuration->yarraModulesPath.toUTF8()};
-
+    modesPath = boost::filesystem::path{parent->app->configuration->yarraModesPath.toUTF8()};
     Wt::WVBoxLayout* subLayout = new Wt::WVBoxLayout();
     this->setLayout(subLayout);
     subLayout->setContentsMargins(0, 0, 0, 0);
@@ -354,7 +354,7 @@ void ywConfigPageModules::showUploadModuleDialog()
             bool multipleManifests=false;
             size_t requiredSize=0;
 
-            for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
+            for (size_t i=0; i<zipArchive->GetEntriesCount(); ++i )
             {
                 std::string fileEntry = zipArchive->GetEntry(i)->GetName();
                 requiredSize += zipArchive->GetEntry(i)->GetSize();
@@ -422,7 +422,7 @@ void ywConfigPageModules::showUploadModuleDialog()
             boost::filesystem::create_directories(modulePath);
 
             // Extract and install ZIP file
-            for (int i=0; i<zipArchive->GetEntriesCount(); ++i )
+            for (size_t i=0; i<zipArchive->GetEntriesCount(); ++i )
             {
                 // TODO: Error handling for file permissions etc
 
@@ -437,6 +437,17 @@ void ywConfigPageModules::showUploadModuleDialog()
                     // Extract file from archive
                     ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), outFilePath.string());
 
+                    // If it's a .mode file, copy
+                    bool inModeDirectory = fs::path(zipEntry->GetFullName()).parent_path().compare(fs::path("modes"))==0;
+
+                    fs::path fileName = zipEntry->GetName();
+
+                    if (inModeDirectory && fileName.extension().string().compare(".mode") == 0){
+                        fs::path modeFilePath = modesPath / fileName;
+                        if (!boost::filesystem::exists(modeFilePath)) {
+                            ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), modeFilePath.string());
+                        }
+                    }
                     // Set file permission to allow execution of binaries
 
                     // The Unix file permissions are stored in the upper 16 bits of the attributes

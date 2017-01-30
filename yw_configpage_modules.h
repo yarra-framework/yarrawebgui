@@ -31,6 +31,7 @@ public:
     Wt::WPushButton* deleteBtn;
     boost::filesystem::path userModulesPath;
     boost::filesystem::path coreModulesPath;
+    boost::filesystem::path modesPath;
 
 
     void showUploadModuleDialog();
