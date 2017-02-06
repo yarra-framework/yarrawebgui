@@ -14,6 +14,7 @@ class ywConfigPageServer;
 class ywConfigPageModules;
 class ywConfigPageUpdate;
 class ywConfigPageServerList;
+class ywConfigPageServerData;
 
 
 class ywConfigPage : public Wt::WContainerWidget
@@ -27,7 +28,8 @@ public:
         PAGE_SERVERSETTINGS,
         PAGE_SERVERUPDATE,
         PAGE_MODULES,
-        PAGE_SERVERLIST
+        PAGE_SERVERLIST,
+        PAGE_SERVERDATA
     };
 
     ywConfigPage(ywApplication* parent);
@@ -51,6 +53,7 @@ public:
     ywConfigPageModules*    pageModules;
     ywConfigPageUpdate*     pageUpdate;
     ywConfigPageServerList* pageServerList;
+    ywConfigPageServerData* pageServerData;
 };
 
 
@@ -124,6 +127,14 @@ public:
 };
 
 
+
+class ywConfigPageServerData : public Wt::WContainerWidget
+{
+public:
+    ywConfigPageServerData(ywConfigPage* pageParent);
+
+    ywConfigPage* parent;
+};
 #endif // YW_CONFIGPAGE_H
 
 

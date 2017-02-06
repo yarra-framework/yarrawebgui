@@ -12,6 +12,7 @@
 #include <Wt/WLineEdit>
 #include <Wt/WPushButton>
 #include <Wt/WText>
+#include <Wt/WTable>
 #include <Wt/WNavigationBar>
 #include <Wt/WBootstrapTheme>
 #include <Wt/WStackedWidget>
@@ -93,6 +94,13 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
         refreshSubpage();
     }));
     pages.push_back(PAGE_SERVERSETTINGS);
+
+    pageServerData=new ywConfigPageServerData(this);
+    configMenu->addItem("Server Data", pageServerData)->triggered().connect(std::bind([=] () {
+        refreshSubpage();
+    }));
+    pages.push_back(PAGE_SERVERDATA);
+
 
     // Show the server list tab only if the file YarraServerList.cfg is existing
     WString serverListName=app->configuration->yarraQueuePath+"/YarraServerList.cfg";
@@ -196,6 +204,75 @@ void ywConfigPage::showErrorMessage(WString errorMessage)
     messageBox->show();
 }
 
+
+ywConfigPageServerData::ywConfigPageServerData(ywConfigPage* pageParent)
+ : WContainerWidget()
+{
+    parent=pageParent;
+    Wt::WVBoxLayout* subLayout = new Wt::WVBoxLayout();
+    this->setLayout(subLayout);
+    Wt::WText* heading=new Wt::WText("<h3>Server Information</h3>");
+    heading->setMargin(6, Wt::Bottom);
+    subLayout->insertWidget(0,heading,0);
+
+
+    // Is Mercurial available in the path?
+    int ret = system("which hg");
+    Wt::WString mercurial = "Present";
+    if (ret != 0) {
+        mercurial = "Absent";
+    }
+
+    // Is Git available in the path?
+    ret = system("which git");
+    Wt::WString git = "Present";
+    if (ret != 0) {
+        git = "Absent";
+    }
+
+    bool file_exists = fs::is_regular_file(parent->app->configuration->yarraMatlabPath.toUTF8());
+    Wt::WString matlab = "Present";
+    if (file_exists != 0) {
+        matlab = "Absent, expected at "+parent->app->configuration->yarraMatlabPath;
+    }
+
+    fs::path pubkey_path = fs::path(getenv("HOME")) / ".ssh/id_rsa.pub";
+    Wt::WString pubkey = "";
+
+    file_exists = fs::is_regular_file(pubkey_path);
+    if (!file_exists) {
+        pubkey += "No public key found. Expected file ~/.ssh/id_rsa.pub .";
+    } else {
+        std::string line;
+        std::ifstream pubkey_file(pubkey_path.string());
+
+        if(!pubkey_file)
+        {
+            pubkey += "Error displaying public key.";
+        }
+        else
+        {
+            while (std::getline(pubkey_file, line))
+            {
+                pubkey+=WString::fromUTF8(line)+"\n";
+            }
+        }
+        pubkey_file.close();
+        pubkey += "";
+    }
+    auto table = new Wt::WTable();
+    table->setHeaderCount(0);
+    table->elementAt(0, 0)->addWidget(new Wt::WText("Mercurial:"));
+    table->elementAt(1, 0)->addWidget(new Wt::WText("Git:"));
+    table->elementAt(2, 0)->addWidget(new Wt::WText("Matlab:"));
+    table->elementAt(3, 0)->addWidget(new Wt::WText("Public Key:"));
+    table->elementAt(0, 1)->addWidget(new Wt::WText(mercurial));
+    table->elementAt(1, 1)->addWidget(new Wt::WText(git));
+    table->elementAt(2, 1)->addWidget(new Wt::WText(matlab));
+    table->elementAt(3, 1)->addWidget(new Wt::WTextArea(pubkey));
+
+    subLayout->addWidget(table,0);
+}
 
 ywConfigPageServer::ywConfigPageServer(ywConfigPage* pageParent)
  : WContainerWidget()

@@ -36,6 +36,7 @@ public:
     WString yarraStoragePath;
     WString yarraModulesPath;
     WString yarraModulesUserPath;
+    WString yarraMatlabPath;
 
     WString serverName;
 

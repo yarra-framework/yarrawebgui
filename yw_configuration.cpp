@@ -30,6 +30,7 @@ ywConfiguration::ywConfiguration()
     yarraStoragePath    ="/finished";
     yarraModulesPath    ="/modules";
     yarraModulesUserPath="/modules_user";
+    yarraMatlabPath     ="/usr/local/bin/matlab";
 
     disableModuleInstallation=false;
     disableModeEditing       =false;
@@ -126,6 +127,8 @@ void ywConfiguration::loadConfiguration()
         yarraStoragePath=WString::fromUTF8(serverIni.get<std::string>("Paths.Storage",WString(yarraPath+yarraStoragePath).toUTF8()));
         yarraModulesPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Modules",WString(yarraPath+yarraModulesPath).toUTF8()));
         yarraModulesUserPath=WString::fromUTF8(serverIni.get<std::string>("Paths.ModulesUser",WString(yarraPath+yarraModulesUserPath).toUTF8()));
+
+        yarraMatlabPath=WString::fromUTF8(serverIni.get<std::string>("Paths.MatlabBinary",WString(yarraPath+yarraMatlabPath).toUTF8()));
 
         configurationValid=true;
     }

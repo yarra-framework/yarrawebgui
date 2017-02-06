@@ -33,7 +33,9 @@ public:
     boost::filesystem::path coreModulesPath;
     boost::filesystem::path modesPath;
 
-
+    void updateModuleRepository();
+    void moveModeFiles(boost::filesystem::path module_path);
+    void showCloneRepoDialog();
     void showUploadModuleDialog();
     void refreshModuleTree();
     void deleteSelectedModules();

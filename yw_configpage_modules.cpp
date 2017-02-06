@@ -63,6 +63,15 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     uploadModuleBtn->setStyleClass("btn-primary");
     uploadModuleBtn->clicked().connect(this, &ywConfigPageModules::showUploadModuleDialog);
 
+    Wt::WPushButton* updateRepoModuleBtn = new Wt::WPushButton("Update Repo", innerBtnContainer);
+    updateRepoModuleBtn->setStyleClass("btn-primary");
+    updateRepoModuleBtn->clicked().connect(this, &ywConfigPageModules::updateModuleRepository);
+
+    Wt::WPushButton* cloneRepoModuleBtn = new Wt::WPushButton("Install Repo", innerBtnContainer);
+    cloneRepoModuleBtn->setStyleClass("btn-primary");
+    cloneRepoModuleBtn->clicked().connect(this, &ywConfigPageModules::showCloneRepoDialog);
+
+
     deleteBtn=new Wt::WPushButton("Remove", innerBtnContainer);
     deleteBtn->setStyleClass("btn-primary");
     deleteBtn->setDisabled(true);
@@ -80,13 +89,15 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     innerLayout->insertWidget(1,deleteBtn,0);
     innerLayout->insertWidget(2,refreshBtn,0);
     innerLayout->insertWidget(3,new Wt::WContainerWidget,1);
-
+    innerLayout->insertWidget(4,cloneRepoModuleBtn,0);
+    innerLayout->insertWidget(5,updateRepoModuleBtn,0);
     subLayout->insertWidget(3,innerBtnContainer,0);
 
     // React when user clicks on modules
     moduleTree->itemSelectionChanged().connect(std::bind([=] () {
         bool deleteBtnDisabled=true;
 
+        bool updateRepoDisabled=true;
         if (moduleTree->selectedNodes().size()>0)
         {
             WTreeNode* selectedNode=*moduleTree->selectedNodes().begin();
@@ -98,7 +109,9 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
                 isUserModule=true;
                 deleteBtnDisabled=false;
             }
-
+            if (fs::is_directory(userModulesPath / selectedNode->label()->text().toUTF8() / ".hg")){
+                updateRepoDisabled=false;
+            }
             // Update the info text based on the selected module
             infoText->setText(getModuleInfo(selectedNode->label()->text(),isUserModule));
         }
@@ -106,7 +119,7 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
         {
             infoText->setText("");
         }
-
+        updateRepoModuleBtn->setDisabled(updateRepoDisabled);
         deleteBtn->setDisabled(deleteBtnDisabled);
     }));
 }
@@ -286,6 +299,133 @@ void ywConfigPageModules::deleteSelectedModules()
     }
 }
 
+void ywConfigPageModules::moveModeFiles(fs::path module_path){
+    if (fs::exists(module_path / "modes")) {
+        for ( fs::directory_iterator end, dir(module_path / "modes"); dir != end; ++dir ) {
+            fs::path file_path = dir->path();
+            if (file_path.extension() == ".mode") {
+                if (!fs::exists(modesPath / file_path.filename())) {
+                    fs::rename(file_path,modesPath / file_path.filename());
+                }
+            }
+        }
+    }
+
+}
+
+void ywConfigPageModules::showCloneRepoDialog() {
+    Wt::WDialog* dialog = new WDialog("Load Module From Repository");
+
+    dialog->contents()->setMinimumSize(500,80);
+    Wt::WVBoxLayout* contentLayout=new Wt::WVBoxLayout();
+    contentLayout->addWidget(new Wt::WText("Repository URL:"));
+
+    Wt::WLineEdit *path = new Wt::WLineEdit();
+    contentLayout->addWidget(path);
+    dialog->contents()->setLayout(contentLayout);
+
+    Wt::WPushButton *okBtn = new Wt::WPushButton("OK", dialog->footer());
+    Wt::WPushButton *cancelBtn = new Wt::WPushButton("Cancel", dialog->footer());
+
+    cancelBtn->setDefault(true);
+    cancelBtn->clicked().connect(dialog, &Wt::WDialog::reject);
+    okBtn->clicked().connect(std::bind([=] () {
+        fs::path temp_path = userModulesPath / "TMP";
+
+        WString statusCmd="hg clone ";
+        statusCmd += path->text() + " TMP --cwd " + userModulesPath.string();
+        FILE* process = popen(statusCmd.toUTF8().data(), "r");
+
+        size_t line_size=512;
+        char line[line_size];
+        std::string result;
+
+        while (fgets(line, line_size, process))
+        {
+             result += line;
+             result += "<br/>";
+        }
+        pclose(process);
+
+        fs::path module_name = fs::path();
+
+
+        for ( fs::recursive_directory_iterator end, dir(temp_path); dir != end; ++dir )
+        {
+            if (dir->path().extension() == ".ymf")
+            {
+                if (fs::exists(userModulesPath / dir->path().stem()))
+                {
+                    Wt::WMessageBox::show("Install failed", "A module with the same name already exists.", Wt::Ok);
+                    fs::remove_all(temp_path);
+                    dialog->reject();
+                    return;
+                }
+                else
+                {
+                    module_name  = dir->path().stem();
+                    break;
+                }
+            }
+        }
+        if (module_name.empty())
+        {
+            fs::remove_all(temp_path);
+            Wt::WMessageBox::show("Install failed", "No manifest found. This doesn't look like a module!", Wt::Ok);
+            return;
+        }
+        moveModeFiles(temp_path);
+        fs::rename(temp_path,userModulesPath / module_name);
+
+        Wt::WMessageBox::show("Result", result, Wt::Ok);
+
+        refreshModuleTree();
+        dialog->accept();
+    }));
+
+    contentLayout->addSpacing(10);
+    dialog->show();
+}
+
+void ywConfigPageModules::updateModuleRepository() {
+    if (!isServerOffline())
+    {
+        Wt::WMessageBox::show("Server Online", "The server needs to be offline before modules can be removed.", Wt::Ok);
+        return;
+    }
+
+    if (Wt::WMessageBox::show("Update Module",
+                              "This operation will update the selected modules.",
+                              Wt::Yes | Wt::No) == Wt::Yes)
+    {
+
+        for (const auto & module : moduleTree->selectedNodes())
+        {
+            auto modulePath = (userModulesPath / module->label()->text().toUTF8());
+            if ( !fs::is_directory(modulePath / ".hg") ) {
+                Wt::WMessageBox::show("Error","This does not appear to be a Mercurial repository.",Wt::Ok);
+                continue;
+            }
+            WString statusCmd="hg pull -u -R ";
+            statusCmd += modulePath.string();
+            FILE* process = popen(statusCmd.toUTF8().data(), "r");
+
+            size_t line_size=512;
+            char line[line_size];
+            std::string result;
+
+            while (fgets(line, line_size, process)) {
+                 result += line;
+                 result += "<br/>";
+            }
+            pclose(process);
+            moveModeFiles(modulePath);
+            Wt::WMessageBox::show("Result:", result, Wt::Ok);
+            refreshModuleTree();
+        }
+    }
+}
+
 
 void ywConfigPageModules::showUploadModuleDialog()
 {
@@ -408,12 +548,23 @@ void ywConfigPageModules::showUploadModuleDialog()
             bool updated=false;
             if (boost::filesystem::is_directory(modulePath))
             {
-                if (Wt::WMessageBox::show("Already Installed",
-                                          "A module with name `" + moduleName + "` is already installed. Do you want to overwrite it?",
-                                          Wt::Ok | Wt::Cancel) != Wt::Ok)
-                {
-                    uploadModuleDialog->reject();
-                    return;
+                if (boost::filesystem::is_directory(modulePath / ".hg")) {
+                    if (Wt::WMessageBox::show("Overwriting a repository",
+                                              "A module with name `" + moduleName + "` is already installed, and it has linked to a version control system. It is probably designed to be updated using the repository update. Are you sure you want to replace it?",
+                                              Wt::Ok | Wt::Cancel) != Wt::Ok)
+                    {
+                        uploadModuleDialog->reject();
+                        return;
+                    }
+                } else {
+
+                    if (Wt::WMessageBox::show("Already Installed",
+                                              "A module with name `" + moduleName + "` is already installed. Do you want to overwrite it?",
+                                              Wt::Ok | Wt::Cancel) != Wt::Ok)
+                    {
+                        uploadModuleDialog->reject();
+                        return;
+                    }
                 }
                 boost::filesystem::remove_all(modulePath);
                 updated = true;
@@ -444,7 +595,7 @@ void ywConfigPageModules::showUploadModuleDialog()
 
                     if (inModeDirectory && fileName.extension().string().compare(".mode") == 0){
                         fs::path modeFilePath = modesPath / fileName;
-                        if (!boost::filesystem::exists(modeFilePath)) {
+                        if (!fs::exists(modeFilePath)) {
                             ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), modeFilePath.string());
                         }
                     }
