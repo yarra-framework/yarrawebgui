@@ -588,17 +588,21 @@ void ywConfigPageModules::showUploadModuleDialog()
                     // Extract file from archive
                     ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), outFilePath.string());
 
-                    // If it's a .mode file, copy
+                    // If it's a .mode file cotained in the subfolder /modes, copy also the the yarra/modes folder if the file does not exist
                     bool inModeDirectory = fs::path(zipEntry->GetFullName()).parent_path().compare(fs::path("modes"))==0;
 
                     fs::path fileName = zipEntry->GetName();
 
-                    if (inModeDirectory && fileName.extension().string().compare(".mode") == 0){
+                    if (inModeDirectory && (fileName.extension().string().compare(".mode") == 0))
+                    {
                         fs::path modeFilePath = modesPath / fileName;
-                        if (!fs::exists(modeFilePath)) {
+
+                        if (!fs::exists(modeFilePath))
+                        {
                             ZipFile::ExtractFile(uploadedFileName, zipEntry->GetFullName(), modeFilePath.string());
                         }
                     }
+
                     // Set file permission to allow execution of binaries
 
                     // The Unix file permissions are stored in the upper 16 bits of the attributes
