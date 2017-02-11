@@ -21,7 +21,18 @@ ywConfiguration::ywConfiguration()
     serverName="Unknown";
     port="8080";
 
-    yarraPath           =".";
+    yarraPath                =".";
+    disableModuleInstallation=false;
+    disableModeEditing       =false;
+    disableSupportForum      =false;
+    disableYarraNews         =false;
+
+    initServerConfiguration();
+}
+
+
+void ywConfiguration::initServerConfiguration()
+{
     yarraLogPath        ="/log";
     yarraModesPath      ="/modes";
     yarraQueuePath      ="/queue";
@@ -30,12 +41,7 @@ ywConfiguration::ywConfiguration()
     yarraStoragePath    ="/finished";
     yarraModulesPath    ="/modules";
     yarraModulesUserPath="/modules_user";
-    yarraMatlabPath     ="/usr/local/bin/matlab";
-
-    disableModuleInstallation=false;
-    disableModeEditing       =false;
-    disableSupportForum      =false;
-    disableYarraNews         =false;
+    matlabBinaryPath    ="/usr/local/bin/matlab";
 }
 
 
@@ -103,32 +109,12 @@ void ywConfiguration::loadConfiguration()
         disableYarraNews         =inifile.get<bool>("Setup.DisableYarraNews"         ,disableYarraNews);
 
         // Now try to read the yarra config file
-        boost::property_tree::ptree serverIni;
-        WString serverFilename=yarraPath+"/"+YW_YARRACONFIG;
-
-        // Check if the yarra config file can be found! Otherwise, stop the webgui
-        if (!fs::exists(serverFilename.toUTF8()))
+        // If the yarra config file cannot be loaded, stop the webgui
+        if (!loadServerConfiguration())
         {
-            std::cout << "ERROR: Can't find YarraServer configuration file " << serverFilename << std::endl;
-            std::cout << "       Has the path to the YarraServer installation been set correctly?" << std::endl;
             configurationValid=false;
             return;
         }
-
-        boost::property_tree::ini_parser::read_ini(serverFilename.toUTF8(), serverIni);
-        serverName=WString::fromUTF8(serverIni.get<std::string>("Server.Name","Unknown"));
-
-        // Note: Here the full path is assembled as default value (base path + subfolder)
-        yarraLogPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Log",WString(yarraPath+yarraLogPath).toUTF8()));
-        yarraModesPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Modes",WString(yarraPath+yarraModesPath).toUTF8()));
-        yarraQueuePath=WString::fromUTF8(serverIni.get<std::string>("Paths.Queue",WString(yarraPath+yarraQueuePath).toUTF8()));
-        yarraWorkPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Work",WString(yarraPath+yarraWorkPath).toUTF8()));
-        yarraFailPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Fail",WString(yarraPath+yarraFailPath).toUTF8()));
-        yarraStoragePath=WString::fromUTF8(serverIni.get<std::string>("Paths.Storage",WString(yarraPath+yarraStoragePath).toUTF8()));
-        yarraModulesPath=WString::fromUTF8(serverIni.get<std::string>("Paths.Modules",WString(yarraPath+yarraModulesPath).toUTF8()));
-        yarraModulesUserPath=WString::fromUTF8(serverIni.get<std::string>("Paths.ModulesUser",WString(yarraPath+yarraModulesUserPath).toUTF8()));
-
-        yarraMatlabPath=WString::fromUTF8(serverIni.get<std::string>("Paths.MatlabBinary",WString(yarraPath+yarraMatlabPath).toUTF8()));
 
         configurationValid=true;
     }
@@ -139,6 +125,49 @@ void ywConfiguration::loadConfiguration()
     }
 
     std::cout << std::endl;
+}
+
+
+bool ywConfiguration::loadServerConfiguration()
+{
+    // Important: This will reset the server paths to the default values, which will merged with the server location
+    //            below. It's important to reinitialize whenever the configuration is refreshed.
+    initServerConfiguration();
+
+    try
+    {
+        WString serverIniFilename=yarraPath+"/"+YW_YARRACONFIG;
+
+        if (!fs::exists(serverIniFilename.toUTF8()))
+        {
+            std::cout << "ERROR: Can't find YarraServer configuration file " << serverIniFilename << std::endl;
+            std::cout << "       Has the path to the YarraServer installation been set correctly?" << std::endl;
+            return false;
+        }
+
+        boost::property_tree::ptree serverIni;
+        boost::property_tree::ini_parser::read_ini(serverIniFilename.toUTF8(), serverIni);
+        serverName=WString::fromUTF8(serverIni.get<std::string>("Server.Name","Unknown"));
+
+        // Note: Here the full path is assembled as default value (base path + subfolder)
+        yarraLogPath        =WString::fromUTF8(serverIni.get<std::string>("Paths.Log"        ,WString(yarraPath+yarraLogPath        ).toUTF8()));
+        yarraModesPath      =WString::fromUTF8(serverIni.get<std::string>("Paths.Modes"      ,WString(yarraPath+yarraModesPath      ).toUTF8()));
+        yarraQueuePath      =WString::fromUTF8(serverIni.get<std::string>("Paths.Queue"      ,WString(yarraPath+yarraQueuePath      ).toUTF8()));
+        yarraWorkPath       =WString::fromUTF8(serverIni.get<std::string>("Paths.Work"       ,WString(yarraPath+yarraWorkPath       ).toUTF8()));
+        yarraFailPath       =WString::fromUTF8(serverIni.get<std::string>("Paths.Fail"       ,WString(yarraPath+yarraFailPath       ).toUTF8()));
+        yarraStoragePath    =WString::fromUTF8(serverIni.get<std::string>("Paths.Storage"    ,WString(yarraPath+yarraStoragePath    ).toUTF8()));
+        yarraModulesPath    =WString::fromUTF8(serverIni.get<std::string>("Paths.Modules"    ,WString(yarraPath+yarraModulesPath    ).toUTF8()));
+        yarraModulesUserPath=WString::fromUTF8(serverIni.get<std::string>("Paths.ModulesUser",WString(yarraPath+yarraModulesUserPath).toUTF8()));
+
+        matlabBinaryPath=WString::fromUTF8(serverIni.get<std::string>("Paths.MatlabBinary",WString(matlabBinaryPath).toUTF8()));
+    }
+    catch(const boost::property_tree::ptree_error &e)
+    {
+        std::cout << "ERROR: " << e.what() << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 

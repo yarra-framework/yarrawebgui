@@ -134,7 +134,13 @@ public:
     ywConfigPageServerData(ywConfigPage* pageParent);
 
     ywConfigPage* parent;
+    Wt::WTable* table;
+
+    Wt::WText* addText(Wt::WString text);
+    void refreshPage();
 };
+
+
 #endif // YW_CONFIGPAGE_H
 
 

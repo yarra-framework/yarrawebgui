@@ -25,6 +25,9 @@ public:
     void loadConfiguration();
     bool isValid();
 
+    void initServerConfiguration();
+    bool loadServerConfiguration();
+
     WString port;
 
     WString yarraPath;
@@ -36,7 +39,7 @@ public:
     WString yarraStoragePath;
     WString yarraModulesPath;
     WString yarraModulesUserPath;
-    WString yarraMatlabPath;
+    WString matlabBinaryPath;
 
     WString serverName;
 

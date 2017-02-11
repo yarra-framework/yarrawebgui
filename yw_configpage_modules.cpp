@@ -66,11 +66,11 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
     Wt::WPushButton* updateRepoModuleBtn = new Wt::WPushButton("Update Repo", innerBtnContainer);
     updateRepoModuleBtn->setStyleClass("btn-primary");
     updateRepoModuleBtn->clicked().connect(this, &ywConfigPageModules::updateModuleRepository);
+    updateRepoModuleBtn->setEnabled(false);
 
     Wt::WPushButton* cloneRepoModuleBtn = new Wt::WPushButton("Install Repo", innerBtnContainer);
     cloneRepoModuleBtn->setStyleClass("btn-primary");
     cloneRepoModuleBtn->clicked().connect(this, &ywConfigPageModules::showCloneRepoDialog);
-
 
     deleteBtn=new Wt::WPushButton("Remove", innerBtnContainer);
     deleteBtn->setStyleClass("btn-primary");
@@ -95,9 +95,10 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
 
     // React when user clicks on modules
     moduleTree->itemSelectionChanged().connect(std::bind([=] () {
-        bool deleteBtnDisabled=true;
 
+        bool deleteBtnDisabled=true;
         bool updateRepoDisabled=true;
+
         if (moduleTree->selectedNodes().size()>0)
         {
             WTreeNode* selectedNode=*moduleTree->selectedNodes().begin();
@@ -108,10 +109,14 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
             {
                 isUserModule=true;
                 deleteBtnDisabled=false;
+
+                // Check if user module has been installed from mecurial
+                if (fs::is_directory(userModulesPath / selectedNode->label()->text().toUTF8() / ".hg"))
+                {
+                    updateRepoDisabled=false;
+                }
             }
-            if (fs::is_directory(userModulesPath / selectedNode->label()->text().toUTF8() / ".hg")){
-                updateRepoDisabled=false;
-            }
+
             // Update the info text based on the selected module
             infoText->setText(getModuleInfo(selectedNode->label()->text(),isUserModule));
         }
@@ -119,6 +124,7 @@ ywConfigPageModules::ywConfigPageModules(ywConfigPage* pageParent)
         {
             infoText->setText("");
         }
+
         updateRepoModuleBtn->setDisabled(updateRepoDisabled);
         deleteBtn->setDisabled(deleteBtnDisabled);
     }));
@@ -178,7 +184,6 @@ void ywConfigPageModules::buildCoreModuleTree(Wt::WTreeNode* baseNode)
         // TODO: Add error reporting
     }
 }
-
 
 
 void ywConfigPageModules::buildUserModuleTree(Wt::WTreeNode* baseNode)
@@ -299,43 +304,80 @@ void ywConfigPageModules::deleteSelectedModules()
     }
 }
 
-void ywConfigPageModules::moveModeFiles(fs::path module_path){
-    if (fs::exists(module_path / "modes")) {
-        for ( fs::directory_iterator end, dir(module_path / "modes"); dir != end; ++dir ) {
+
+void ywConfigPageModules::moveModeFiles(fs::path module_path)
+{
+    // Check if repository contains subfolder /modes. If so, search it for .mode files
+    // and copy the files into the server modes directory.
+
+    if (fs::exists(module_path / "modes"))
+    {
+        for ( fs::directory_iterator end, dir(module_path / "modes"); dir != end; ++dir )
+        {
             fs::path file_path = dir->path();
-            if (file_path.extension() == ".mode") {
-                if (!fs::exists(modesPath / file_path.filename())) {
+            if (file_path.extension() == ".mode")
+            {
+                // Only copy .mode file is it does not exist yet
+                if (!fs::exists(modesPath / file_path.filename()))
+                {
+                    // TODO: Mode files should be copied instead of moved from the /modes folder
                     fs::rename(file_path,modesPath / file_path.filename());
                 }
             }
         }
     }
-
 }
 
-void ywConfigPageModules::showCloneRepoDialog() {
-    Wt::WDialog* dialog = new WDialog("Load Module From Repository");
+
+void ywConfigPageModules::showCloneRepoDialog()
+{
+    if (parent->app->configuration->disableModuleInstallation)
+    {
+        Wt::WMessageBox::show("Security Policy", "Installation of modules via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
+
+    if (!isServerOffline())
+    {
+        Wt::WMessageBox::show("Server Online", "The server needs to be offline before modules can be installed.", Wt::Ok);
+        return;
+    }
+
+    Wt::WDialog* dialog = new WDialog("Install Module From Repository");
 
     dialog->contents()->setMinimumSize(500,80);
     Wt::WVBoxLayout* contentLayout=new Wt::WVBoxLayout();
     contentLayout->addWidget(new Wt::WText("Repository URL:"));
 
-    Wt::WLineEdit *path = new Wt::WLineEdit();
-    contentLayout->addWidget(path);
+    Wt::WLineEdit *pathEdit = new Wt::WLineEdit();
+    contentLayout->addWidget(pathEdit);
     dialog->contents()->setLayout(contentLayout);
 
     Wt::WPushButton *okBtn = new Wt::WPushButton("OK", dialog->footer());
     Wt::WPushButton *cancelBtn = new Wt::WPushButton("Cancel", dialog->footer());
 
-    cancelBtn->setDefault(true);
     cancelBtn->clicked().connect(dialog, &Wt::WDialog::reject);
+    okBtn->setDefault(true);
+    okBtn->setEnabled(false);
+
+    pathEdit->keyPressed().connect(std::bind([=] () {
+        okBtn->setEnabled(!pathEdit->text().empty());
+    }));
+
     okBtn->clicked().connect(std::bind([=] () {
+
+        // Temporary check out path for installation of module (needed to determine module name)
         fs::path temp_path = userModulesPath / "TMP";
 
+        // Execute Mercurial command
+        // TODO: Also support git, in case a git repo is provided
         WString statusCmd="hg clone ";
-        statusCmd += path->text() + " TMP --cwd " + userModulesPath.string();
+        statusCmd += pathEdit->text() + " TMP --cwd " + userModulesPath.string();
+
+        // TODO: Does currently not read the error output
         FILE* process = popen(statusCmd.toUTF8().data(), "r");
 
+        // Read output from clone command
         size_t line_size=512;
         char line[line_size];
         std::string result;
@@ -347,35 +389,52 @@ void ywConfigPageModules::showCloneRepoDialog() {
         }
         pclose(process);
 
+        // Path that will hold the module name if a manuifest file has been found
         fs::path module_name = fs::path();
 
+        // Check if the TMP folder exists. Only then then checkout was successful and the installation can proceed
+        if (!fs::exists(temp_path))
+        {
+            Wt::WMessageBox::show("Installation failed", "Installing the module from the repository failed.<br /><br />Reason:<br />"+result, Wt::Ok);
+            return;
+        }
 
+        // Search the directory for a .ymf manifest file
         for ( fs::recursive_directory_iterator end, dir(temp_path); dir != end; ++dir )
         {
             if (dir->path().extension() == ".ymf")
             {
                 if (fs::exists(userModulesPath / dir->path().stem()))
                 {
-                    Wt::WMessageBox::show("Install failed", "A module with the same name already exists.", Wt::Ok);
+                    Wt::WMessageBox::show("Installation failed", "A module with the same name already exists.", Wt::Ok);
                     fs::remove_all(temp_path);
                     dialog->reject();
                     return;
                 }
                 else
                 {
-                    module_name  = dir->path().stem();
+                    // Stop if manifest file has been found
+                    module_name = dir->path().stem();
                     break;
                 }
             }
         }
+
+        // Cancel if no manifest file was found
         if (module_name.empty())
         {
             fs::remove_all(temp_path);
-            Wt::WMessageBox::show("Install failed", "No manifest found. This doesn't look like a module!", Wt::Ok);
+            Wt::WMessageBox::show("Installation failed", "No manifest file found. Repository does not look like a valid Yarra module.", Wt::Ok);
             return;
         }
+
+        // Copy mode files contained in repo.
         moveModeFiles(temp_path);
+
+        // Now install the module, i.e. rename folder from TMP to the module name.
         fs::rename(temp_path,userModulesPath / module_name);
+
+        // TOOD: How to set file permissions for contained binaries?
 
         Wt::WMessageBox::show("Result", result, Wt::Ok);
 
@@ -387,40 +446,56 @@ void ywConfigPageModules::showCloneRepoDialog() {
     dialog->show();
 }
 
-void ywConfigPageModules::updateModuleRepository() {
+
+void ywConfigPageModules::updateModuleRepository()
+{
+    if (parent->app->configuration->disableModuleInstallation)
+    {
+        Wt::WMessageBox::show("Security Policy", "Installation of modules via the WebGUI has been disabled.", Wt::Ok);
+        return;
+    }
+
     if (!isServerOffline())
     {
-        Wt::WMessageBox::show("Server Online", "The server needs to be offline before modules can be removed.", Wt::Ok);
+        Wt::WMessageBox::show("Server Online", "The server needs to be offline before modules can be updated.", Wt::Ok);
         return;
     }
 
     if (Wt::WMessageBox::show("Update Module",
-                              "This operation will update the selected modules.",
+                              "This operation will update the selected module from the repository.",
                               Wt::Yes | Wt::No) == Wt::Yes)
     {
-
         for (const auto & module : moduleTree->selectedNodes())
         {
             auto modulePath = (userModulesPath / module->label()->text().toUTF8());
-            if ( !fs::is_directory(modulePath / ".hg") ) {
-                Wt::WMessageBox::show("Error","This does not appear to be a Mercurial repository.",Wt::Ok);
+
+            // TODO: Also support git at some point
+            if ( !fs::is_directory(modulePath / ".hg") )
+            {
+                Wt::WMessageBox::show("Error","This module does not appear to be installed from a Mercurial repository.",Wt::Ok);
                 continue;
             }
+
+            // Execute the mercurial update command
             WString statusCmd="hg pull -u -R ";
             statusCmd += modulePath.string();
             FILE* process = popen(statusCmd.toUTF8().data(), "r");
 
+            // Read and show the output
             size_t line_size=512;
             char line[line_size];
             std::string result;
 
-            while (fgets(line, line_size, process)) {
+            while (fgets(line, line_size, process))
+            {
                  result += line;
                  result += "<br/>";
-            }
+            }            
             pclose(process);
-            moveModeFiles(modulePath);
-            Wt::WMessageBox::show("Result:", result, Wt::Ok);
+
+            // Do not copy mode files into modes directory, because then the mode files come back after each update.
+
+            Wt::WMessageBox::show("Result", result, Wt::Ok);
             refreshModuleTree();
         }
     }

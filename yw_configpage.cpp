@@ -95,13 +95,6 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
     }));
     pages.push_back(PAGE_SERVERSETTINGS);
 
-    pageServerData=new ywConfigPageServerData(this);
-    configMenu->addItem("Server Data", pageServerData)->triggered().connect(std::bind([=] () {
-        refreshSubpage();
-    }));
-    pages.push_back(PAGE_SERVERDATA);
-
-
     // Show the server list tab only if the file YarraServerList.cfg is existing
     WString serverListName=app->configuration->yarraQueuePath+"/YarraServerList.cfg";
     if (fs::exists(serverListName.toUTF8()))
@@ -122,6 +115,12 @@ ywConfigPage::ywConfigPage(ywApplication* parent)
         refreshSubpage();
     }));
     pages.push_back(PAGE_SERVERUPDATE);
+
+    pageServerData=new ywConfigPageServerData(this);
+    configMenu->addItem("Information", pageServerData)->triggered().connect(std::bind([=] () {
+        refreshSubpage();
+    }));
+    pages.push_back(PAGE_SERVERDATA);
 
     pageModules=new ywConfigPageModules(this);
     configMenu->addItem("Installed Modules", pageModules)->triggered().connect(std::bind([=] () {
@@ -157,13 +156,15 @@ void ywConfigPage::refreshStatus()
 
 void ywConfigPage::refreshSubpage()
 {
-    PAGES currentPage=pages.at(configMenu->currentIndex());
+    // Find out which page is currently displayed
+    PAGES currentPage=PAGE_MODES;
 
-    if ((currentPage<0) || (currentPage>4))
+    if ((configMenu->currentIndex()>=0) && (configMenu->currentIndex()<pages.size()))
     {
-        currentPage=PAGE_MODES;
+        currentPage=pages.at(configMenu->currentIndex());
     }
 
+    // Then update the corresponding page
     switch (currentPage)
     {
     case PAGE_MODES:
@@ -184,6 +185,9 @@ void ywConfigPage::refreshSubpage()
         break;
     case PAGE_SERVERLIST:
         pageServerList->refreshEditor();
+        break;
+    case PAGE_SERVERDATA:
+        pageServerData->refreshPage();
         break;
     }
 }
@@ -211,38 +215,75 @@ ywConfigPageServerData::ywConfigPageServerData(ywConfigPage* pageParent)
     parent=pageParent;
     Wt::WVBoxLayout* subLayout = new Wt::WVBoxLayout();
     this->setLayout(subLayout);
+    subLayout->setContentsMargins(0, 0, 0, 0);
+
     Wt::WText* heading=new Wt::WText("<h3>Server Information</h3>");
     heading->setMargin(6, Wt::Bottom);
     subLayout->insertWidget(0,heading,0);
 
+    table = new Wt::WTable();
+    table->setHeaderCount(0);
+    subLayout->addWidget(table,0);
+    subLayout->addStretch(1);
 
-    // Is Mercurial available in the path?
+    refreshPage();
+}
+
+
+Wt::WText* ywConfigPageServerData::addText(Wt::WString text)
+{
+    Wt::WText* entry = new Wt::WText(text);
+    return entry;
+}
+
+
+void ywConfigPageServerData::refreshPage()
+{
+    table->clear();
+
+    // Check if Mercurial is installed
     int ret = system("which hg");
-    Wt::WString mercurial = "Present";
-    if (ret != 0) {
-        mercurial = "Absent";
+    Wt::WString mercurial = "<span style=\"background-color: #00aa00 !important;\" class=\"label label-info\">Installed</span>";
+    if (ret != 0)
+    {
+        mercurial = "<span style=\"background-color: #aa0000 !important;\" class=\"label label-info\">Not installed</span>";
     }
 
+    /*
     // Is Git available in the path?
+    // Hidden for now, as only hg is supported for module repos at the moment
     ret = system("which git");
-    Wt::WString git = "Present";
+    Wt::WString git = "Installed";
     if (ret != 0) {
-        git = "Absent";
+        git = "Not installed";
+    }
+    */
+
+    // Check if Matlab is installed
+
+    // TODO: Seems not to work
+    // TODO: Determine Matlab version
+
+    //bool file_exists = fs::is_regular_file(parent->app->configuration->yarraMatlabPath.toUTF8());
+
+    bool matlabExists = fs::exists(parent->app->configuration->matlabBinaryPath.toUTF8());
+    Wt::WString matlab = "<span style=\"background-color: #00aa00 !important;\" class=\"label label-info\">Installed</span>";
+    if (!matlabExists)
+    {
+        matlab = "<span style=\"background-color: #aa0000 !important;\" class=\"label label-info\">Not installed</span> &nbsp; (expected in " + parent->app->configuration->matlabBinaryPath.toUTF8()+")";
     }
 
-    bool file_exists = fs::is_regular_file(parent->app->configuration->yarraMatlabPath.toUTF8());
-    Wt::WString matlab = "Present";
-    if (file_exists != 0) {
-        matlab = "Absent, expected at "+parent->app->configuration->yarraMatlabPath;
-    }
-
+    // Show the public SSH key, if available
     fs::path pubkey_path = fs::path(getenv("HOME")) / ".ssh/id_rsa.pub";
     Wt::WString pubkey = "";
 
-    file_exists = fs::is_regular_file(pubkey_path);
-    if (!file_exists) {
-        pubkey += "No public key found. Expected file ~/.ssh/id_rsa.pub .";
-    } else {
+    bool pubkeyExists = fs::is_regular_file(pubkey_path);
+    if (!pubkeyExists)
+    {
+        pubkey += "No public key found.";
+    }
+    else
+    {
         std::string line;
         std::ifstream pubkey_file(pubkey_path.string());
 
@@ -260,19 +301,38 @@ ywConfigPageServerData::ywConfigPageServerData(ywConfigPage* pageParent)
         pubkey_file.close();
         pubkey += "";
     }
-    auto table = new Wt::WTable();
-    table->setHeaderCount(0);
-    table->elementAt(0, 0)->addWidget(new Wt::WText("Mercurial:"));
-    table->elementAt(1, 0)->addWidget(new Wt::WText("Git:"));
-    table->elementAt(2, 0)->addWidget(new Wt::WText("Matlab:"));
-    table->elementAt(3, 0)->addWidget(new Wt::WText("Public Key:"));
-    table->elementAt(0, 1)->addWidget(new Wt::WText(mercurial));
-    table->elementAt(1, 1)->addWidget(new Wt::WText(git));
-    table->elementAt(2, 1)->addWidget(new Wt::WText(matlab));
-    table->elementAt(3, 1)->addWidget(new Wt::WTextArea(pubkey));
 
-    subLayout->addWidget(table,0);
+    // Show results
+    table->elementAt(0, 0)->addWidget(addText("Operating System:"));
+    table->elementAt(0, 1)->addWidget(addText("To-be-done"));
+
+    table->elementAt(1, 0)->addWidget(addText("Physical Memory:"));
+    table->elementAt(1, 1)->addWidget(addText("To-be-done"));
+
+    table->elementAt(2, 0)->addWidget(addText("CPU Cores:"));
+    table->elementAt(2, 1)->addWidget(addText("To-be-done"));
+
+    table->elementAt(3, 0)->addWidget(addText("Offis DCMTK:"));
+    table->elementAt(3, 1)->addWidget(addText("To-be-done"));
+
+    table->elementAt(4, 0)->addWidget(addText("Matlab:"));
+    table->elementAt(4, 1)->addWidget(addText(matlab));
+
+    table->elementAt(5, 0)->addWidget(addText("Mercurial:"));
+    table->elementAt(5, 1)->addWidget(addText(mercurial));
+
+    table->elementAt(6, 0)->addWidget(addText("Public Key:"));
+
+    Wt::WTextArea* pubkeyEdit=new Wt::WTextArea(pubkey);
+    pubkeyEdit->setReadOnly(true);
+    table->elementAt(6, 1)->addWidget(pubkeyEdit);
+
+    // TODO: Add space between rows
+
+    //table->elementAt(1, 0)->addWidget(new Wt::WText("Git:"));
+    //table->elementAt(1, 1)->addWidget(new Wt::WText(git));
 }
+
 
 ywConfigPageServer::ywConfigPageServer(ywConfigPage* pageParent)
  : WContainerWidget()
@@ -323,7 +383,7 @@ ywConfigPageServer::ywConfigPageServer(ywConfigPage* pageParent)
 
 void ywConfigPageServer::refreshEditor()
 {
-    editor->setText(readServerConfig());
+    editor->setText(readServerConfig());    
 }
 
 
@@ -391,6 +451,9 @@ bool ywConfigPageServer::writeServerConfig(WString newConfig)
         delete messageBox;
     }));
     messageBox->show();
+
+    // Reload the new server settings into the webgui
+    parent->app->configuration->loadServerConfiguration();
 
     return true;
 }

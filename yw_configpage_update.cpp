@@ -38,7 +38,7 @@ ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
     subLayout->setContentsMargins(0, 0, 0, 0);
 
     // Add heading
-    Wt::WText* head=new Wt::WText("<h3>Server Information</h3>");
+    Wt::WText* head=new Wt::WText("<h3>Server Update</h3>");
     head->setMargin(16, Wt::Bottom);
     subLayout->addWidget(head,0);
 
