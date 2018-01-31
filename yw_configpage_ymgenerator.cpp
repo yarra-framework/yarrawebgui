@@ -41,7 +41,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+
 namespace fs = boost::filesystem;
+
 
 ywConfigPageYMGenerator::~ywConfigPageYMGenerator()
 {
@@ -86,7 +88,6 @@ void ywConfigPageYMGenerator::showErrorMessage(WString errorMessage)
     }));
     messageBox->show();
 }
-
 
 
 void ywConfigPageYMGenerator::perform()
@@ -179,7 +180,6 @@ void ywConfigPageYMGenerator::perform()
         ywHelper::unlockFile(fullName.toUTF8());
     }
 }
-
 
 
 bool ywConfigPageYMGenerator::parseModeFiles()

@@ -44,6 +44,10 @@ public:
 
     ywApplication* app;
 
+    WString initStartCmd;
+    WString initStopCmd;
+    WString initRestartCmd;
+
 };
 
 #endif // YW_SERVERINTERFACE_H

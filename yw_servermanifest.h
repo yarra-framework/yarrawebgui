@@ -18,6 +18,7 @@ public:
     WString releaseDate;
     WString versionServerCore;
     WString versionWebGUI;
+    WString buildOS;
 
     WString minimumVersionForUpdate;
     WStringList filesToRemoveForUpdate;
@@ -26,12 +27,13 @@ public:
     bool readManifest(WString filename="");
     WString renderInformation();
 
-    bool requiresUpdate(WString latestVersionString);
-    bool canUpdateVersion(WString installedVersionString);
+    bool  requiresUpdate(WString latestVersionString);
+    bool  canUpdateVersion(WString installedVersionString);
     float versionStringToFloat(WString versionString);
+    bool  checkBuildOS();
 
     WString localYarraPath;
-
 };
+
 
 #endif // YW_SERVERMANIFEST_H

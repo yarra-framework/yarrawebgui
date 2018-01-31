@@ -1,7 +1,14 @@
 TARGET = YarraWebGUI
 
-# Define identifier for Ubuntu Linux version (UBUNTU_1204 / UBUNTU_1404)
-BUILD_OS=UBUNTU_1204
+# Define identifier for Ubuntu Linux version (UBUNTU_1204 / UBUNTU_1404 / UBUNTU_1604)
+BUILD_OS=UBUNTU_1604
+
+equals( BUILD_OS, "UBUNTU_1604" ) {
+    message( "Configuring for Ubuntu 16.04" )
+    QMAKE_CXXFLAGS += -DUBUNTU_1604
+    ICU_PATH=/usr/lib/x86_64-linux-gnu
+    BOOST_PATH=/usr/lib/x86_64-linux-gnu
+}
 
 equals( BUILD_OS, "UBUNTU_1404" ) {
     message( "Configuring for Ubuntu 14.04" )
@@ -36,10 +43,13 @@ LIBS += /usr/local/lib/libwthttp.a
 LIBS += /usr/local/lib/libwt.a
 
 LIBS += /usr/lib/libGraphicsMagick.a
-
 LIBS += /usr/lib/x86_64-linux-gnu/libfreetype.a
 LIBS += /usr/lib/x86_64-linux-gnu/libtiff.a
-LIBS += /usr/lib/x86_64-linux-gnu/liblcms.a
+
+!equals( BUILD_OS, "UBUNTU_1604" ) {
+    LIBS += /usr/lib/x86_64-linux-gnu/liblcms.a
+}
+
 LIBS += $$ICU_PATH/libicui18n.a
 LIBS += $$ICU_PATH/libicuuc.a
 
@@ -73,20 +83,29 @@ LIBS += -lrt
 LIBS += /usr/lib/x86_64-linux-gnu/libssl.a
 LIBS += /usr/lib/x86_64-linux-gnu/libcrypto.a
 LIBS += /usr/lib/x86_64-linux-gnu/libcrypt.a
-
 LIBS += /usr/lib/x86_64-linux-gnu/libz.a
 LIBS += /usr/lib/x86_64-linux-gnu/libm.a
-LIBS += /usr/lib/gcc/x86_64-linux-gnu/4.8/libgomp.a
+
+equals( BUILD_OS, "UBUNTU_1604" ) {
+    LIBS += /usr/lib/gcc/x86_64-linux-gnu/5/libgomp.a
+} else {
+    LIBS += /usr/lib/gcc/x86_64-linux-gnu/4.8/libgomp.a
+}
+
 LIBS += /usr/lib/x86_64-linux-gnu/libX11.a
 LIBS += /usr/lib/x86_64-linux-gnu/libXext.a
-
 LIBS += /usr/lib/x86_64-linux-gnu/libxcb.a
 LIBS += /usr/lib/x86_64-linux-gnu/libXau.a
 LIBS += /usr/lib/x86_64-linux-gnu/libXdmcp.a
 
-LIBS += -ldl
-
-TEMPLATE = app
+equals( BUILD_OS, "UBUNTU_1604" ) {
+    LIBS += -lpthread -ldl -lc -lm -static
+    TEMPLATE = app
+    CONFIG = console
+} else {
+    LIBS += -ldl
+    TEMPLATE = app
+}
 
 SOURCES += main.cpp \
     yw_configuration.cpp \

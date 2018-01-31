@@ -26,6 +26,7 @@ ywServerManifest::ywServerManifest(WString yarraPath)
     versionServerCore="0";
     versionWebGUI="0";
     minimumVersionForUpdate="";
+    buildOS="";
     filesToRemoveForUpdate.clear();
 }
 
@@ -66,6 +67,8 @@ bool ywServerManifest::readManifest(WString filename)
         releaseDate      =WString::fromUTF8(manifestFile.get<std::string>("YarraServer.ReleaseDate"      ,WString(releaseDate).toUTF8()));
         versionServerCore=WString::fromUTF8(manifestFile.get<std::string>("YarraServer.VersionServerCore",WString(versionServerCore).toUTF8()));
         versionWebGUI    =WString::fromUTF8(manifestFile.get<std::string>("YarraServer.VersionWebGUI"    ,WString(versionWebGUI).toUTF8()));
+        buildOS          =WString::fromUTF8(manifestFile.get<std::string>("YarraServer.BuildOS"          ,WString(buildOS).toUTF8()));
+
         minimumVersionForUpdate=WString::fromUTF8(manifestFile.get<std::string>("YarraServer.MinimumVersionForUpdate",WString(minimumVersionForUpdate).toUTF8()));
 
         // Read the list of files that should be removed before installing an update
@@ -73,7 +76,6 @@ bool ywServerManifest::readManifest(WString filename)
         {
             filesToRemoveForUpdate.push_back(WString::fromUTF8(boost::lexical_cast<std::string>(v.first.data())));
         }
-
     }
     catch(const std::exception & e)
     {
@@ -89,7 +91,14 @@ WString ywServerManifest::renderInformation()
     WString infoString="";
 
     infoString ="<div style=\"margin-bottom: 6px; margin-top: -4px; \"><h3 style=\"font-size: 21px; font-weight: 400;\">YarraServer&nbsp;- Version "+version+"</h3></div>";
-    infoString+="<p style=\"line-height: 1.3; \">Released on "+releaseDate+"</p>";
+
+#ifdef UBUNTU_1604
+    infoString+="<p style=\"line-height: 1.3; \">Build for Ubuntu 16.04 LTS<br />";
+#else
+    infoString+="<p style=\"line-height: 1.3; \">Build for Ubuntu 12.04 / 14.04 LTS<br />";
+#endif
+
+    infoString+="Released on "+releaseDate+"</p>";
     infoString+="<p style=\"line-height: 1.3; \">Server Core v"+versionServerCore+"<br />";
     infoString+="WebGUI v"+versionWebGUI+"</p>";
 
@@ -139,5 +148,25 @@ float ywServerManifest::versionStringToFloat(WString versionString)
     versionStr >> versionFloat;
 
     return versionFloat;
+}
+
+
+bool ywServerManifest::checkBuildOS()
+{
+    bool buildOSMatches=false;
+
+#ifdef UBUNTU_1604
+    if (buildOS=="1604")
+    {
+        buildOSMatches=true;
+    }
+#else
+    if ((buildOS=="") || (buildOS=="1404") || (buildOS=="1204"))
+    {
+        buildOSMatches=true;
+    }
+#endif
+
+    return buildOSMatches;
 }
 

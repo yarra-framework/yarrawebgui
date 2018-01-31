@@ -12,6 +12,17 @@ ywServerInterface::ywServerInterface()
     serverReply="";
     serverStatusText="";
     serverTaskLog="";
+
+    initStartCmd  =" sudo start ";
+    initStopCmd   =" sudo stop ";
+    initRestartCmd=" sudo restart ";
+
+#ifdef UBUNTU_1604
+    initStartCmd  =" sudo systemctl start ";
+    initStopCmd   =" sudo systemctl stop ";
+    initRestartCmd=" sudo systemctl restart ";
+#endif
+
 }
 
 
@@ -154,7 +165,7 @@ bool ywServerInterface::isServerRunning(WString yarraPath)
 
 bool ywServerInterface::startServer()
 {
-    WString statusCmd="./yarradexec sudo start yarra";
+    WString statusCmd="./yarradexec"+initStartCmd+"yarra";
 
     //system(statusCmd.toUTF8().data());
 
@@ -173,7 +184,7 @@ bool ywServerInterface::startServer()
 
 bool ywServerInterface::ywServerInterface::stopServer()
 {
-    WString statusCmd="./yarradexec sudo stop yarra";
+    WString statusCmd="./yarradexec"+initStopCmd+"yarra";
 
     FILE* process=popen(statusCmd.toUTF8().data(), "r");
     if (process==NULL)
@@ -207,7 +218,7 @@ bool ywServerInterface::killServer()
 
 bool ywServerInterface::restartWebGUI()
 {
-    WString statusCmd="./yarradexec sudo restart yarrawebgui";
+    WString statusCmd="./yarradexec"+initRestartCmd+"yarrawebgui";
 
     FILE* process=popen(statusCmd.toUTF8().data(), "r");
     if (process==NULL)

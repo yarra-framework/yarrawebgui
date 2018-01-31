@@ -40,6 +40,11 @@ WApplication* createApplication(const WEnvironment& env)
 
 int main(int argc, char **argv)
 {
+
+#ifdef UBUNTU_1604
+    std::cout << std::endl << "YarraServer WebGUI - Build for Ubuntu 16.04." << std::endl;
+#endif
+
     configurationInstance.loadConfiguration();
     if (!configurationInstance.isValid())
     {

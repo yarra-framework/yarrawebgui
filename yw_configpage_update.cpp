@@ -188,7 +188,7 @@ void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, con
                 if (manifest.requiresUpdate(latestVersion))
                 {
                     resultText= "<p><span class=\"label label-warning\">Update Available</span>&nbsp;&nbsp; An update for this server is available (Version "+latestVersion+").</p>";
-                    resultText+="<p><a href=\""+latestURL+"\" target=\"_blank\">Click here to download</a> the update or visit the <a href=\"https://yarra.rocks/doc/download\" target=\"_blank\">Yarra Download page</a>. Afterwards, install it using the button below.</p>";
+                    resultText+="<p>To download the update, visit the <a href=\"https://yarra.rocks/doc/download\" target=\"_blank\">Yarra Download page</a> and select the build for your operating system (see above). Afterwards, install it using the button below.</p>";
                 }
                 else
                 {
@@ -353,19 +353,28 @@ void ywConfigPageUpdate::checkUploadAndUpdate(WString uploadedFilename, WString 
                 if (installedManifest.requiresUpdate(tempManifest.version))
                 {
                     // Now check if we can update the installed version. If not, abort the update
-                    if (tempManifest.canUpdateVersion(installedManifest.version)==false)
+                    if (!tempManifest.canUpdateVersion(installedManifest.version))
                     {
                         abortUpdate=true;
                         abortMessage="The installed version cannot be updated. Please install the new version manually according to the instructions given on the website.";
                     }
                     else
                     {
-                        // Finally test if enough disk space is available. Assuming that all folder are
-                        // installed on the same volume. Space estimation is conservative.
-                        if (!isSufficientDiskSpaceAvailable(requiredSize))
+                        // Check if the uploaded update has the right build for the installed operating system
+                        if (!tempManifest.checkBuildOS())
                         {
                             abortUpdate=true;
-                            abortMessage="Insufficient disk space available to install update. Please free up disk space in the Yarra installation volume.";
+                            abortMessage="Incorrect build for the installed operating system. Please download the correct build from the Yarra homepage.";
+                        }
+                        else
+                        {
+                            // Finally test if enough disk space is available. Assuming that all folder are
+                            // installed on the same volume. Space estimation is conservative.
+                            if (!isSufficientDiskSpaceAvailable(requiredSize))
+                            {
+                                abortUpdate=true;
+                                abortMessage="Insufficient disk space available to install update. Please free up disk space in the Yarra installation volume.";
+                            }
                         }
                     }
                 }

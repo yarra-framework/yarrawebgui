@@ -60,7 +60,7 @@ ywConfiguration::~ywConfiguration()
 
 
 void ywConfiguration::loadConfiguration()
-{
+{    
     std::cout << std::endl << "Reading YarraServer WebGUI configuration..." << std::endl;
 
     int maxUser=100;

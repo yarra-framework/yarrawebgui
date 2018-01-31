@@ -217,7 +217,7 @@ ywConfigPageServerData::ywConfigPageServerData(ywConfigPage* pageParent)
     this->setLayout(subLayout);
     subLayout->setContentsMargins(0, 0, 0, 0);
 
-    Wt::WText* heading=new Wt::WText("<h3>Server Information</h3>");
+    Wt::WText* heading=new Wt::WText("<h3>Information</h3>");
     heading->setMargin(6, Wt::Bottom);
     subLayout->insertWidget(0,heading,0);
 
@@ -241,12 +241,97 @@ void ywConfigPageServerData::refreshPage()
 {
     table->clear();
 
-    // Check if Mercurial is installed
+    WString cpuCoresStatus="Unknown";
+    WString memoryStatus  ="Unknown";
+    WString osStatus      ="Unknown";
+
+    WString reply="";
+    FILE*   process=0;
+
+
+    // ## Get number of cores
+    process=popen("grep -c ^processor /proc/cpuinfo", "r");
+
+    reply="";
+    if (process!=0)
+    {
+        char buffer[1028];
+        while (fgets(buffer, 1028, process) != NULL)
+        {
+            reply+=WString(buffer);
+        }
+    }
+    pclose(process);
+
+    if (!reply.empty())
+    {
+        cpuCoresStatus=reply;
+    }
+
+
+    // ## Get memory
+    process=popen("echo $(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024)))", "r");
+
+    reply="";
+    if (process!=0)
+    {
+        char buffer[1028];
+        while (fgets(buffer, 1028, process) != NULL)
+        {
+            reply+=WString(buffer);
+        }
+    }
+    pclose(process);
+
+    if (!reply.empty())
+    {
+        memoryStatus=reply+" MB";
+    }
+
+
+    // ## Get Linux distribution
+    process=popen("lsb_release -a", "r");
+
+    reply="";
+    if (process!=0)
+    {
+        char buffer[1028];
+        while (fgets(buffer, 1028, process) != NULL)
+        {
+            reply+=WString(buffer);
+        }
+    }
+    pclose(process);
+
+    if (!reply.empty())
+    {
+        std::string sreply=reply.toUTF8();
+
+        // Find the distribution information in the output
+        int pos=sreply.find("Description:");
+
+        if (pos !=std::string::npos)
+        {
+            sreply.erase(0,pos+12);
+
+            // Find the end of the line and cut the string there
+            pos=sreply.find("\n");
+            sreply.erase(pos);
+
+            // Check if there is a preceding tab
+            pos=sreply.find("\t");
+            sreply.erase(pos,1);
+        }
+        osStatus=WString(sreply);
+    }
+
+
+    // ## Check if Mercurial is installed
     int ret = system("which hg");
-    Wt::WString mercurial = "<span style=\"background-color: #00aa00 !important;\" class=\"label label-info\">Installed</span>";
+    Wt::WString mercurialStatus = "<span style=\"background-color: #00aa00 !important;\" class=\"label label-info\">Installed</span>";
     if (ret != 0)
     {
-        mercurial = "<span style=\"background-color: #aa0000 !important;\" class=\"label label-info\">Not installed</span>";
+        mercurialStatus = "<span style=\"background-color: #aa0000 !important;\" class=\"label label-info\">Not installed</span>";
     }
 
     /*
@@ -259,21 +344,28 @@ void ywConfigPageServerData::refreshPage()
     }
     */
 
-    // Check if Matlab is installed
 
-    // TODO: Seems not to work
-    // TODO: Determine Matlab version
-
-    //bool file_exists = fs::is_regular_file(parent->app->configuration->yarraMatlabPath.toUTF8());
-
-    bool matlabExists = fs::exists(parent->app->configuration->matlabBinaryPath.toUTF8());
-    Wt::WString matlab = "<span style=\"background-color: #00aa00 !important;\" class=\"label label-info\">Installed</span>";
-    if (!matlabExists)
+    // ## Check if DCMTK is installed
+    bool dcmtkExists = (system("which storescp") == 0);
+    Wt::WString dcmtkStatus = "<span style=\"background-color: #00aa00 !important;\" class=\"label label-info\">Installed</span>";
+    if (!dcmtkExists)
     {
-        matlab = "<span style=\"background-color: #aa0000 !important;\" class=\"label label-info\">Not installed</span> &nbsp; (expected in " + parent->app->configuration->matlabBinaryPath.toUTF8()+")";
+        dcmtkStatus = "<span style=\"background-color: #aa0000 !important;\" class=\"label label-info\">Not installed</span>";
     }
 
-    // Show the public SSH key, if available
+
+    // ## Check if Matlab is installed
+    bool matlabExists = fs::exists(parent->app->configuration->matlabBinaryPath.toUTF8());
+    Wt::WString matlabStatus = "<span style=\"background-color: #00aa00 !important;\" class=\"label label-info\">Installed</span>";
+    if (!matlabExists)
+    {
+        matlabStatus = "<span style=\"background-color: #aa0000 !important;\" class=\"label label-info\">Not installed</span> &nbsp; (expected in " + parent->app->configuration->matlabBinaryPath.toUTF8()+")";
+    } 
+
+    // TODO: Determine Matlab version
+
+
+    // ## Show the public SSH key, if available
     fs::path pubkey_path = fs::path(getenv("HOME")) / ".ssh/id_rsa.pub";
     Wt::WString pubkey = "";
 
@@ -302,32 +394,33 @@ void ywConfigPageServerData::refreshPage()
         pubkey += "";
     }
 
-    // Show results
+
+    // ## Show results
+    table->addStyleClass("table form-inline");
+
     table->elementAt(0, 0)->addWidget(addText("Operating System:"));
-    table->elementAt(0, 1)->addWidget(addText("To-be-done"));
+    table->elementAt(0, 1)->addWidget(addText(osStatus));
 
     table->elementAt(1, 0)->addWidget(addText("Physical Memory:"));
-    table->elementAt(1, 1)->addWidget(addText("To-be-done"));
+    table->elementAt(1, 1)->addWidget(addText(memoryStatus));
 
     table->elementAt(2, 0)->addWidget(addText("CPU Cores:"));
-    table->elementAt(2, 1)->addWidget(addText("To-be-done"));
+    table->elementAt(2, 1)->addWidget(addText(cpuCoresStatus));
 
     table->elementAt(3, 0)->addWidget(addText("Offis DCMTK:"));
-    table->elementAt(3, 1)->addWidget(addText("To-be-done"));
+    table->elementAt(3, 1)->addWidget(addText(dcmtkStatus));
 
     table->elementAt(4, 0)->addWidget(addText("Matlab:"));
-    table->elementAt(4, 1)->addWidget(addText(matlab));
+    table->elementAt(4, 1)->addWidget(addText(matlabStatus));
 
     table->elementAt(5, 0)->addWidget(addText("Mercurial:"));
-    table->elementAt(5, 1)->addWidget(addText(mercurial));
+    table->elementAt(5, 1)->addWidget(addText(mercurialStatus));
 
-    table->elementAt(6, 0)->addWidget(addText("Public Key:"));
+    table->elementAt(6, 0)->addWidget(addText("Public SSH Key:"));
 
     Wt::WTextArea* pubkeyEdit=new Wt::WTextArea(pubkey);
     pubkeyEdit->setReadOnly(true);
     table->elementAt(6, 1)->addWidget(pubkeyEdit);
-
-    // TODO: Add space between rows
 
     //table->elementAt(1, 0)->addWidget(new Wt::WText("Git:"));
     //table->elementAt(1, 1)->addWidget(new Wt::WText(git));
