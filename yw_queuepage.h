@@ -80,6 +80,9 @@ public:
     WString getWorkTaskFile();    
     WString getFolderResumeFile(WString taskName);
 
+    void pauseResumeTask(WString taskName);
+    void clearResumeDelay(WString taskName);
+
     bool getAllFilesOfTask(WString taskFileName, WStringList& fileList);
 
 };

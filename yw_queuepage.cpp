@@ -1,5 +1,6 @@
 #include "yw_queuepage.h"
 #include "yw_application.h"
+#include "yw_helper.h"
 
 #include <Wt/WApplication>
 #include <Wt/WBreak>
@@ -333,11 +334,11 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
         if (mode==MODE_RESUMED)
         {
             popup->addSeparator();
-            popup->addItem("Clear delay")->triggered().connect(std::bind([=] () {
-                // TODO
+            popup->addItem("Clear retry delay")->triggered().connect(std::bind([=] () {
+                clearResumeDelay(title);
             }));
             popup->addItem("Pause / Resume")->triggered().connect(std::bind([=] () {
-                // TODO
+                pauseResumeTask(title);
             }));
             popup->addSeparator();
         }
@@ -395,6 +396,84 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
     }
 
     return panel;
+}
+
+
+void ywQueuePage::pauseResumeTask(WString taskName)
+{
+    WString folderName=resumePath+"/"+taskName;
+    WString resumeFilename=getFolderResumeFile(folderName);
+
+    if (resumeFilename.empty())
+    {
+        showErrorMessage("Resume information is missing.");
+        return;
+    }
+    if (ywHelper::isFolderLocked(folderName))
+    {
+        showErrorMessage("Task is currently in use (locked).");
+        return;
+    }
+    if (!ywHelper::lockFile(folderName+"/resume.lock"))
+    {
+        showErrorMessage("Unable to lock task.");
+        return;
+    }
+
+    try
+    {
+        boost::property_tree::ptree resumefile;
+        boost::property_tree::ini_parser::read_ini(resumeFilename.toUTF8(), resumefile);
+
+        // Read current state and flip
+        bool pauseValue=resumefile.get<bool>("Information.Paused",false);
+        resumefile.put("Information.Paused", !pauseValue);
+
+        boost::property_tree::ini_parser::write_ini(resumeFilename.toUTF8(), resumefile);
+    }
+    catch(const boost::property_tree::ptree_error &e)
+    {
+    }
+
+    ywHelper::unlockFile(folderName+"/resume.lock");
+    refreshResumedList();
+}
+
+
+void ywQueuePage::clearResumeDelay(WString taskName)
+{
+    WString folderName=resumePath+"/"+taskName;
+    WString resumeFilename=getFolderResumeFile(folderName);
+
+    if (resumeFilename.empty())
+    {
+        showErrorMessage("Resume information is missing.");
+        return;
+    }
+    if (ywHelper::isFolderLocked(folderName))
+    {
+        showErrorMessage("Task is currently in use (locked).");
+        return;
+    }
+    if (!ywHelper::lockFile(folderName+"/resume.lock"))
+    {
+        showErrorMessage("Unable to lock task.");
+        return;
+    }
+
+    try
+    {
+        boost::property_tree::ptree resumefile;
+        boost::property_tree::ini_parser::read_ini(resumeFilename.toUTF8(), resumefile);
+        resumefile.put("Information.NextRetry", "");
+        boost::property_tree::ini_parser::write_ini(resumeFilename.toUTF8(), resumefile);
+    }
+    catch(const boost::property_tree::ptree_error &e)
+    {
+    }
+
+    ywHelper::unlockFile(folderName+"/resume.lock");
+    refreshResumedList();
 }
 
 
@@ -494,6 +573,11 @@ WString ywQueuePage::getResumedTaskInformation(WString taskName)
         }
 
         resumeNextTry=WString::fromUTF8(resumefile.get<std::string>("Information.NextRetry",""));
+        if (resumeNextTry.empty())
+        {
+            resumeNextTry="ASAP";
+        }
+
         resumeRetries=WString::fromUTF8(resumefile.get<std::string>("Information.Retries",""));
 
         bool paused=resumefile.get<bool>("Information.Paused",false);
@@ -1109,7 +1193,20 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
 
             WString taskPath=getFullTaskFileName(taskName, mode);
 
-            // TODO: For resume tasks, we need to create a lock file!
+            // For resume tasks, we need to create a lock file!
+            if (mode==MODE_RESUMED)
+            {
+                if (ywHelper::isFolderLocked(taskPath))
+                {
+                    showErrorMessage("Task is currently in use (locked).");
+                    return;
+                }
+                if (!ywHelper::lockFile(taskPath+"/resume.lock"))
+                {
+                    showErrorMessage("Unable to lock task.");
+                    return;
+                }
+            }
 
             fs::path taskDir(taskPath.toUTF8());
             fs::directory_iterator end_iter;
@@ -1125,7 +1222,7 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
                 {
                     for( fs::directory_iterator dir_iter(taskDir) ; dir_iter != end_iter ; ++dir_iter)
                     {
-                        if (fs::is_regular_file(dir_iter->status()))
+                        if (fs::is_regular_file(dir_iter->status()) || fs::is_directory(dir_iter->status()))
                         {
                             result_set.insert(result_set_t::value_type(0,*dir_iter));
                         }
@@ -1145,7 +1242,7 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
 
                 try
                 {
-                    fs::remove(deleteFile.toUTF8());
+                    fs::remove_all(deleteFile.toUTF8());
                 }
                 catch(const boost::filesystem::filesystem_error& e)
                 {
