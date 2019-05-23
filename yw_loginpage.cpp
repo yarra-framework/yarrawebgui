@@ -74,7 +74,6 @@ ywLoginPage::ywLoginPage(ywApplication* parent)
         pwdEdit->setFocus();
     }));
 
-
     Wt::WPushButton* loginButton = new Wt::WPushButton("Login");
     loginButton->setStyleClass("btn-primary");
     loginButton->setMargin(18,Wt::Top);
@@ -122,4 +121,3 @@ void ywLoginPage::loginClick()
         app->performLogin();
     }
 }
-

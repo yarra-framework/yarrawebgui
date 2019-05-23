@@ -78,8 +78,6 @@ WString ywModuleManifest::renderInformation()
     }
     infoString+="<br /></div>";
 
-
-
     if (!description.empty())
     {
         infoString+="<div style=\"margin-bottom: 6px; \"><i>"+description+"</i></div>";

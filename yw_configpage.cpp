@@ -996,8 +996,6 @@ void ywConfigPageModes::refreshModes()
     {
         modeList->addItem(result_set.at(i));
     }
-
-
 }
 
 

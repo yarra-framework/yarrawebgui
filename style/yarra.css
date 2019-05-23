@@ -320,6 +320,33 @@ h3,
 }
 
 
+.panel-resumed {
+  border-color: #000000;
+  margin-bottom: 10px;
+}
+.panel-resumed > .panel-heading {
+  color: #ffffff;
+  background-color: #CBA052;
+  border-color: #CBA052;
+  padding-left: 6px;
+}
+.panel-resumed > .panel-heading + .panel-collapse > .panel-body {
+  border-top-color: #CBA052;
+}
+.panel-resumed > .panel-heading .badge {
+  color: #CBA052;
+  background-color: #ffffff;
+}
+.panel-resumed > .panel-footer + .panel-collapse > .panel-body {
+  border-bottom-color: #CBA052;
+}
+.panel-resumed .accordion-toggle
+{
+    padding-left: 4px;
+}
+
+
+
 .panel-proc {
   border-color: #000000;
   margin-bottom: 10px;

@@ -40,6 +40,8 @@ public:
     WString yarraModulesPath;
     WString yarraModulesUserPath;
     WString matlabBinaryPath;
+    WString yarraResumePath;
+    bool    yarraEnableResume;
 
     WString serverName;
 

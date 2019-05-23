@@ -42,9 +42,9 @@ INCLUDEPATH += $$PWD/ziplib/Source
 LIBS += /usr/local/lib/libwthttp.a
 LIBS += /usr/local/lib/libwt.a
 
-LIBS += /usr/lib/libGraphicsMagick.a
-LIBS += /usr/lib/x86_64-linux-gnu/libfreetype.a
-LIBS += /usr/lib/x86_64-linux-gnu/libtiff.a
+#LIBS += /usr/lib/libGraphicsMagick.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libfreetype.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libtiff.a
 
 !equals( BUILD_OS, "UBUNTU_1604" ) {
     LIBS += /usr/lib/x86_64-linux-gnu/liblcms.a
@@ -55,18 +55,18 @@ LIBS += $$ICU_PATH/libicuuc.a
 
 LIBS += /usr/lib/x86_64-linux-gnu/libglib-2.0.a
 LIBS += /usr/lib/x86_64-linux-gnu/libgobject-2.0.a
-LIBS += /usr/lib/x86_64-linux-gnu/libpango-1.0.a
-LIBS += /usr/lib/x86_64-linux-gnu/libpangoft2-1.0.a
-LIBS += /usr/lib/x86_64-linux-gnu/libpng12.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libpango-1.0.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libpangoft2-1.0.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libpng12.a
 LIBS += $$ICU_PATH/libicudata.a
 LIBS += /usr/lib/x86_64-linux-gnu/libgmodule-2.0.a
-LIBS += /usr/lib/x86_64-linux-gnu/libfontconfig.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libfontconfig.a
 LIBS += /usr/lib/x86_64-linux-gnu/libltdl.a
 LIBS += /usr/lib/x86_64-linux-gnu/libxml2.a
 
-LIBS += /usr/lib/x86_64-linux-gnu/libbz2.a
-LIBS += /usr/lib/x86_64-linux-gnu/libwmflite.a
-LIBS += /usr/lib/x86_64-linux-gnu/libjasper.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libbz2.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libwmflite.a
+#LIBS += /usr/lib/x86_64-linux-gnu/libjasper.a
 LIBS += /usr/lib/x86_64-linux-gnu/libjpeg.a
 
 LIBS += $$BOOST_PATH/libboost_thread.a
@@ -87,9 +87,9 @@ LIBS += /usr/lib/x86_64-linux-gnu/libz.a
 LIBS += /usr/lib/x86_64-linux-gnu/libm.a
 
 equals( BUILD_OS, "UBUNTU_1604" ) {
-    LIBS += /usr/lib/gcc/x86_64-linux-gnu/5/libgomp.a
+#    LIBS += /usr/lib/gcc/x86_64-linux-gnu/5/libgomp.a
 } else {
-    LIBS += /usr/lib/gcc/x86_64-linux-gnu/4.8/libgomp.a
+#    LIBS += /usr/lib/gcc/x86_64-linux-gnu/4.8/libgomp.a
 }
 
 LIBS += /usr/lib/x86_64-linux-gnu/libX11.a

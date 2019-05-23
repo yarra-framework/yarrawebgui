@@ -25,8 +25,8 @@
 
 namespace fs = boost::filesystem;
 
-#define YW_UPDATE_URL     "https://yarra.rocks/release/version.json"
-#define YW_YARRAROCKS_URL "https://yarra.rocks"
+#define YW_UPDATE_URL     "https://s3.amazonaws.com/download.yarraframework.com/version.json"
+#define YW_YARRAROCKS_URL "https://s3.amazonaws.com/download.yarraframework.com/"
 
 
 ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
@@ -61,8 +61,8 @@ ywConfigPageUpdate::ywConfigPageUpdate(ywConfigPage* pageParent)
     subLayout->addSpacing(10);
 
     // Add into text with link to homepage
-    WString homepageTextContent="Documentation and release history available at <a href=\"http://yarra.rocks\" target=\"_blank\">http://yarra.rocks</a>.<br />";
-    homepageTextContent+="Visit the <a href=\"https://yarra.rocks/forum/index.php\" target=\"_blank\">Yarra Forum</a> to get support and provide feedback.";
+    WString homepageTextContent="Documentation and release history available at <a href=\"http://yarraframework.com\" target=\"_blank\">http://yarraframework.com</a>.<br />";
+    homepageTextContent+="Visit the <a href=\"http://yarraframework.com/overview/support\" target=\"_blank\">Yarra Forum</a> to get support and provide feedback.";
     Wt::WText* homepageText=new Wt::WText(homepageTextContent);
     subLayout->addWidget(homepageText,0);
 
@@ -188,7 +188,7 @@ void ywConfigPageUpdate::handleHttpResponse(boost::system::error_code error, con
                 if (manifest.requiresUpdate(latestVersion))
                 {
                     resultText= "<p><span class=\"label label-warning\">Update Available</span>&nbsp;&nbsp; An update for this server is available (Version "+latestVersion+").</p>";
-                    resultText+="<p>To download the update, visit the <a href=\"https://yarra.rocks/doc/download\" target=\"_blank\">Yarra Download page</a> and select the build for your operating system (see above). Afterwards, install it using the button below.</p>";
+                    resultText+="<p>To download the update, visit the <a href=\"http://yarraframework.com/download\" target=\"_blank\">Yarra Download page</a> and select the build for your operating system (see above). Afterwards, install it using the button below.</p>";
                 }
                 else
                 {

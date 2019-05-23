@@ -5,7 +5,6 @@
 #include "yw_application.h"
 
 
-
 ywServerInterface::ywServerInterface()
 {
     serverStatus=STATUS_UKNOWN;

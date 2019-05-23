@@ -137,12 +137,12 @@ void ywApplication::performLogin()
         {
             WText* iframeText=new WText();
             iframeText->setTextFormat(XHTMLUnsafeText);
-            iframeText->setText("<iframe src=\"https://yarra.rocks/forum/index.php\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
+            iframeText->setText("<iframe src=\"http://yarraframework.com/embed_support\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
 
             leftMenu->addItem("Support", iframeText)->triggered().connect(std::bind([=] () {
                 iframeText->setText("");
                 iframeText->refresh();
-                iframeText->setText("<iframe src=\"https://yarra.rocks/forum/index.php\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
+                iframeText->setText("<iframe src=\"http://yarraframework.com/embed_support\" width=\"100%\" height=\"100%\" style=\"border:none\"></iframe>");
             }));
         }
     }
@@ -157,7 +157,7 @@ void ywApplication::performLogin()
     Wt::WPopupMenu *popup = new Wt::WPopupMenu();
 
     WMenuItem* helpItem=popup->addItem("Help");
-    helpItem->setLink(Wt::WLink("http://yarra.rocks"));
+    helpItem->setLink(Wt::WLink("http://yarraframework.com/server"));
     helpItem->setLinkTarget(Wt::TargetNewWindow);
 
     popup->addItem("About")->triggered().connect(this, &ywApplication::showAbout);
@@ -202,7 +202,8 @@ void ywApplication::showAbout()
     Wt::WMessageBox *messageBox = new Wt::WMessageBox
        ("About",
         "<p>YarraServer WebGUI</p><p>Version "+ WString(YW_VERSION) +" (Build: " + WString(__DATE__) +  ")</p>"
-        "<p>Developed by Kai Tobias Block (yarra@ktblock.de)</p>",
+        "<p>Developed by Kai Tobias Block and Roy Wiggins.</p>"
+        "<p><a href=\"http://yarraframework.com\" target=\"_blank\">http://yarraframework.com</a></p>",
         Wt::Information, Wt::Ok);
 
     messageBox->setModal(true);

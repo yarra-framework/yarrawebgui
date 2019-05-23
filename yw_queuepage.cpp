@@ -54,6 +54,7 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     failPath   =app->configuration->yarraFailPath;
     workPath   =app->configuration->yarraWorkPath;
     storagePath=app->configuration->yarraStoragePath;
+    resumePath =app->configuration->yarraResumePath;
 
     // Page container
     Wt::WVBoxLayout* queuePageLayout = new Wt::WVBoxLayout();
@@ -131,11 +132,44 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
     finishedcenterLayout->addWidget(finishedtaskContainer, 0, Wt::AlignCenter);
     finishedLayout->addWidget(finishedscrollArea);
 
+    // Resume List container
+    WContainerWidget* resumedContainer=0;
+    Wt::WContainerWidget* resumedtaskContainer=0;
+
+    if (app->configuration->yarraEnableResume)
+    {
+        resumedContainer = new WContainerWidget();
+        Wt::WVBoxLayout*  resumedLayout = new Wt::WVBoxLayout();
+        resumedLayout->setContentsMargins(0, 0, 0, 0);
+        resumedContainer->setLayout(resumedLayout);
+
+        Wt::WContainerWidget* resumedcenterContainer = new Wt::WContainerWidget();
+        Wt::WHBoxLayout* resumedcenterLayout = new Wt::WHBoxLayout();
+        resumedcenterLayout->setContentsMargins(0, 20, 0, 0);
+        resumedcenterLayout->setSpacing(0);
+        resumedcenterContainer->setLayout(resumedcenterLayout);
+
+        resumedtaskContainer = new Wt::WContainerWidget();
+        resumedtaskLayout = new Wt::WVBoxLayout();
+        resumedtaskLayout->setContentsMargins(0, 0, 0, 0);
+        resumedtaskLayout->setSpacing(4);
+        resumedtaskContainer->setLayout(resumedtaskLayout);
+
+        Wt::WScrollArea* resumedscrollArea=new Wt::WScrollArea();
+        resumedscrollArea->setWidget(resumedcenterContainer);
+        resumedcenterLayout->addWidget(resumedtaskContainer, 0, Wt::AlignCenter);
+        resumedLayout->addWidget(resumedscrollArea);
+    }
+
     // Tab widget
     tabWidget = new Wt::WTabWidget();
     tabWidget->addTab(queueContainer,    "Scheduled", Wt::WTabWidget::PreLoading);
     tabWidget->addTab(failContainer,     "Failed",    Wt::WTabWidget::PreLoading);
     tabWidget->addTab(finishedContainer, "Completed", Wt::WTabWidget::PreLoading);
+    if (app->configuration->yarraEnableResume)
+    {
+        tabWidget->addTab(resumedContainer,  "Suspended", Wt::WTabWidget::PreLoading);
+    }
     tabWidget->currentChanged().connect(this, &ywQueuePage::tabChanged);
     tabWidget->setStyleClass("tabwidget");
 
@@ -166,12 +200,21 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
 
     taskContainer->resize(800,Wt::WLength::Auto);
     taskContainer->setMinimumSize(600,Wt::WLength::Auto);
+
     failtaskContainer->resize(800,Wt::WLength::Auto);
     failtaskContainer->setMinimumSize(600,Wt::WLength::Auto);
     failtaskContainer->setMaximumSize(800,Wt::WLength::Auto);
+
     finishedtaskContainer->resize(800,Wt::WLength::Auto);
     finishedtaskContainer->setMinimumSize(600,Wt::WLength::Auto);
     finishedtaskContainer->setMaximumSize(800,Wt::WLength::Auto);
+
+    if (app->configuration->yarraEnableResume)
+    {
+        resumedtaskContainer->resize(800,Wt::WLength::Auto);
+        resumedtaskContainer->setMinimumSize(600,Wt::WLength::Auto);
+        resumedtaskContainer->setMaximumSize(800,Wt::WLength::Auto);
+    }
 
     refreshLists();
 }
@@ -203,6 +246,10 @@ void ywQueuePage::refreshLists()
     {
         refreshFinishedList();
     }
+    if (tabWidget->currentIndex()==3)
+    {
+        refreshResumedList();
+    }
 }
 
 
@@ -233,6 +280,9 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
     case MODE_FINISHED:
         panel->addStyleClass("panelqueue panel-finished");
         break;
+    case MODE_RESUMED:
+        panel->addStyleClass("panelqueue panel-resumed");
+        break;
     }
     panel->addStyleClass("modal-content");
     panel->setCollapsible(true);
@@ -240,7 +290,6 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
 
     WContainerWidget* innerWidget=new WContainerWidget();
     panel->setCentralWidget(innerWidget);
-
 
     WText* taskInfo=new WText(innerWidget);
     taskInfo->setText("");
@@ -258,7 +307,6 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
             updateTaskInformation(title, taskInfo, mode);
         }
     }));
-
 
     if (app->currentLevel>ywApplication::YW_USERLEVEL_TECH)
     {
@@ -282,7 +330,20 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
             }));
         }
 
-        if ((mode!=MODE_PROC) && (mode!=MODE_FAIL) && (mode!=MODE_FINISHED))
+        if (mode==MODE_RESUMED)
+        {
+            popup->addSeparator();
+            popup->addItem("Clear delay")->triggered().connect(std::bind([=] () {
+                // TODO
+            }));
+            popup->addItem("Pause / Resume")->triggered().connect(std::bind([=] () {
+                // TODO
+            }));
+            popup->addSeparator();
+        }
+
+        if ((mode!=MODE_PROC) && (mode!=MODE_FAIL) && (mode!=MODE_FINISHED)
+             && (mode!=MODE_RESUMED))
         {
             popup->addSeparator();
             if (mode!=MODE_NORMAL)
@@ -317,7 +378,8 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
             popup->addItem("Delete")->triggered().connect(std::bind([=] () {
                 deleteTask(title, mode);
             }));
-            if (app->currentLevel==ywApplication::YW_USERLEVEL_ADMIN)
+
+            if ((app->currentLevel==ywApplication::YW_USERLEVEL_ADMIN) && (mode!=MODE_RESUMED))
             {
                 popup->addSeparator();
                 popup->addItem("Edit task file")->triggered().connect(std::bind([=] () {
@@ -341,7 +403,7 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
     WString infoText="";
     WString fileName=getFullTaskFileName(taskName, taskType);
 
-    if ((taskType==MODE_FAIL) || (taskType==MODE_FINISHED))
+    if ((taskType==MODE_FAIL) || (taskType==MODE_FINISHED) || (taskType==MODE_RESUMED))
     {
         // Find the full name of the task file (which might be .task, .task_prio, .task_night)
         fileName=getFolderTaskFile(fileName);
@@ -352,7 +414,6 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
         // Find the full name of the task file in the work directory (which can be .task, .task_prio, .task_night)
         fileName=getWorkTaskFile();
     }
-
 
     if (fs::exists(fileName.toUTF8()))
     {
@@ -374,6 +435,12 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
             {
                 infoText+="&nbsp;&nbsp; <strong>Parameter:</strong> "+paramValue;
             }
+
+            if (taskType==MODE_RESUMED)
+            {
+                infoText+=getResumedTaskInformation(taskName);
+            }
+
         }
         catch(const boost::property_tree::ptree_error &e)
         {
@@ -385,8 +452,67 @@ void ywQueuePage::updateTaskInformation(WString taskName, WText* taskWidget,int 
         infoText="Error finding task information";
     }
 
-
     taskWidget->setText(infoText);
+}
+
+
+WString ywQueuePage::getResumedTaskInformation(WString taskName)
+{
+    WString information="<br /><strong>Status:</strong> ";
+
+    WString folderName=resumePath+"/"+taskName;
+    WString resumeFilename=getFolderResumeFile(folderName);
+
+    if (resumeFilename.empty())
+    {
+        information += "Information missing";
+        return information;
+    }
+
+    WString resumeStatus="";
+    WString resumeNextTry="";
+    WString resumeRetries="";
+
+    try
+    {
+        boost::property_tree::ptree resumefile;
+        boost::property_tree::ini_parser::read_ini(resumeFilename.toUTF8(), resumefile);
+
+        int state=resumefile.get<int>("Information.State",0);
+
+        switch (state)
+        {
+        case 4:
+            resumeStatus="PostProcessing";
+            break;
+        case 5:
+            resumeStatus="Transfer";
+            break;
+        default:
+            resumeStatus="Unknown";
+            break;
+        }
+
+        resumeNextTry=WString::fromUTF8(resumefile.get<std::string>("Information.NextRetry",""));
+        resumeRetries=WString::fromUTF8(resumefile.get<std::string>("Information.Retries",""));
+
+        bool paused=resumefile.get<bool>("Information.Paused",false);
+        if (paused)
+        {
+            resumeNextTry += "&nbsp;<span class=\"label label-warning\">PAUSED</span>";
+        }
+    }
+    catch(const boost::property_tree::ptree_error &e)
+    {
+        information += "Error reading information";
+        return information;
+    }
+
+    information += resumeStatus;
+    information += "<br /><strong>Attempts:</strong> "+resumeRetries;
+    information += "<br /><strong>Next Retry:</strong> "+resumeNextTry;
+
+    return information;
 }
 
 
@@ -427,6 +553,38 @@ WString ywQueuePage::getFolderTaskFile(WString taskName)
 }
 
 
+WString ywQueuePage::getFolderResumeFile(WString taskName)
+{
+    const string& ext_resume=YW_EXT_RESUME;
+
+    fs::path folderDir(taskName.toUTF8());
+    fs::directory_iterator folder_iter;
+
+    WString folderResumeFilename="";
+
+    try
+    {
+        if ( fs::exists(folderDir) && fs::is_directory(folderDir))
+        {
+            for( fs::directory_iterator dir_iter(folderDir) ; dir_iter != folder_iter ; ++dir_iter)
+            {
+                if ( (fs::is_regular_file(dir_iter->status())) && (dir_iter->path().extension()==ext_resume) )
+                {
+                    folderResumeFilename=dir_iter->path().generic_string();
+                    break;
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        folderResumeFilename="";
+    }
+
+    return folderResumeFilename;
+}
+
+
 WString ywQueuePage::getWorkTaskFile()
 {
     const string& ext_prio  =YW_EXT_TASKPRIO;
@@ -464,12 +622,12 @@ WString ywQueuePage::getWorkTaskFile()
 }
 
 
-void ywQueuePage::showInfo (WString taskName, int mode)
+void ywQueuePage::showInfo(WString taskName, int mode)
 {
     WString infoText="";
     WString fileName=getFullTaskFileName(taskName, mode);
 
-    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED))
+    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED) || (mode==MODE_RESUMED))
     {
         // Find the full name of the task file (which might be .task, .task_prio, .task_night)
         fileName=getFolderTaskFile(fileName);
@@ -531,7 +689,6 @@ void ywQueuePage::showInfo (WString taskName, int mode)
         infoText="Error finding task information";
     }
 
-
     Wt::WDialog *dialog = new Wt::WDialog("Task Information");
 
     Wt::WText* textWidget=new Wt::WText();
@@ -561,6 +718,7 @@ void ywQueuePage::refreshFailList()
     failtaskLayout->clear();
     WTimer::singleShot(0, this, &ywQueuePage::clearQueueList);
     WTimer::singleShot(0, this, &ywQueuePage::clearFinishedList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearResumedList);
 
     WText* failedLabel=new WText("Failed Tasks");
     failtaskLayout->addWidget(failedLabel,Wt::Left);
@@ -616,6 +774,7 @@ void ywQueuePage::refreshFinishedList()
     finishedtaskLayout->clear();
     WTimer::singleShot(0, this, &ywQueuePage::clearQueueList);
     WTimer::singleShot(0, this, &ywQueuePage::clearFailList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearResumedList);
 
     WText* finishedLabel=new WText("Finished Tasks");
     finishedtaskLayout->addWidget(finishedLabel,Wt::Left);
@@ -683,6 +842,15 @@ void ywQueuePage::clearQueueList()
 }
 
 
+void ywQueuePage::clearResumedList()
+{
+    if (app->configuration->yarraEnableResume)
+    {
+        resumedtaskLayout->clear();
+    }
+}
+
+
 void ywQueuePage::refreshQueueList()
 {
     const string& ext_prio  =YW_EXT_TASKPRIO;
@@ -692,6 +860,7 @@ void ywQueuePage::refreshQueueList()
     taskLayout->clear();
     WTimer::singleShot(0, this, &ywQueuePage::clearFailList);
     WTimer::singleShot(0, this, &ywQueuePage::clearFinishedList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearResumedList);
 
     namespace fs = boost::filesystem;
 
@@ -854,6 +1023,9 @@ WString ywQueuePage::getFullTaskFileName(WString taskName, int mode)
     case MODE_PROC:
         return workPath;
         break;
+    case MODE_RESUMED:
+        return resumePath+"/"+taskName;
+        break;
     }
 }
 
@@ -922,7 +1094,7 @@ void ywQueuePage::changePriority(WString taskName, int currentPriority, int newP
 
 void ywQueuePage::deleteTask(WString taskName, int mode)
 {
-    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED))
+    if ((mode==MODE_FAIL) || (mode==MODE_FINISHED) || (mode==MODE_RESUMED))
     {
         Wt::WMessageBox box1("Delete Task","<p>Are you sure to delete this task?</p>\
                              <p><strong>Warning:</strong> The data will be lost permanently.</p>", Wt::Question, Wt::No | Wt::Yes);
@@ -932,10 +1104,12 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
 
         if (box1.buttonResult()==Wt::Yes)
         {
-            // For failed tasks, we only need to delete all file in the task directory
+            // For failed/finished/resume tasks, we only need to delete all file in the task directory
             // and finally delete the task directory
 
             WString taskPath=getFullTaskFileName(taskName, mode);
+
+            // TODO: For resume tasks, we need to create a lock file!
 
             fs::path taskDir(taskPath.toUTF8());
             fs::directory_iterator end_iter;
@@ -964,7 +1138,7 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
 
             bool deleteError=false;
 
-            // First check if there is any file already existing in the queue directory
+            // Delete all items inside the task directory
             for (result_set_t::iterator ii=result_set.begin(); ii!=result_set.end(); ++ii)
             {
                 WString deleteFile=taskPath+"/"+WString((*ii).second.filename().generic_string());
@@ -1711,3 +1885,63 @@ void ywQueuePage::doEditTask(WString taskName, int mode, WString newContent)
     WTimer::singleShot(100, this, &ywQueuePage::refreshLists);
 }
 
+
+void ywQueuePage::refreshResumedList()
+{
+    if (!app->configuration->yarraEnableResume)
+    {
+        return;
+    }
+
+    // Clear both pages to free-up memory
+    resumedtaskLayout->clear();
+    WTimer::singleShot(0, this, &ywQueuePage::clearQueueList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearFailList);
+    WTimer::singleShot(0, this, &ywQueuePage::clearFinishedList);
+
+    WText* resumedLabel=new WText("Suspended Tasks");
+    resumedtaskLayout->addWidget(resumedLabel,Wt::Left);
+
+    fs::path resumedDir(app->configuration->yarraResumePath.toUTF8());
+    fs::directory_iterator end_iter;
+
+    typedef std::multimap<std::time_t,  boost::filesystem::path> result_set_t;
+    result_set_t result_set;
+
+    try
+    {
+        if (fs::exists(resumedDir) && fs::is_directory(resumedDir))
+        {
+            for(fs::directory_iterator dir_iter(resumedDir) ; dir_iter != end_iter ; ++dir_iter)
+            {
+                if (fs::is_directory(dir_iter->status()))
+                {
+                    result_set.insert(result_set_t::value_type(fs::last_write_time(dir_iter->path()), *dir_iter));
+                }
+            }
+        }
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+    }
+
+    int i=0;
+    // Iterate backwards through the results list
+    for (result_set_t::reverse_iterator ii=result_set.rbegin(); ii!=result_set.rend(); ++ii)
+    {
+        WString dirName=WString((*ii).second.filename().generic_string());
+        resumedtaskLayout->addWidget(createQueuePanel(dirName, MODE_RESUMED),Wt::AlignMiddle);
+        i++;
+
+        // Only show max 100 entries to avoid slow speed.
+        if (i>100)
+        {
+            break;
+        }
+    }
+
+    if (i==0)
+    {
+        resumedLabel->setText("No suspended tasks found.");
+    }
+}

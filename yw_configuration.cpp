@@ -42,6 +42,8 @@ void ywConfiguration::initServerConfiguration()
     yarraModulesPath    ="/modules";
     yarraModulesUserPath="/modules_user";
     matlabBinaryPath    ="/usr/local/bin/matlab";
+    yarraResumePath     ="/resume";
+    yarraEnableResume   =false;
 }
 
 
@@ -158,6 +160,8 @@ bool ywConfiguration::loadServerConfiguration()
         yarraStoragePath    =WString::fromUTF8(serverIni.get<std::string>("Paths.Storage"    ,WString(yarraPath+yarraStoragePath    ).toUTF8()));
         yarraModulesPath    =WString::fromUTF8(serverIni.get<std::string>("Paths.Modules"    ,WString(yarraPath+yarraModulesPath    ).toUTF8()));
         yarraModulesUserPath=WString::fromUTF8(serverIni.get<std::string>("Paths.ModulesUser",WString(yarraPath+yarraModulesUserPath).toUTF8()));
+        yarraResumePath     =WString::fromUTF8(serverIni.get<std::string>("Paths.Resume"     ,WString(yarraPath+yarraResumePath     ).toUTF8()));
+        yarraEnableResume   =serverIni.get<bool>("Options.ResumeTasks",yarraEnableResume);
 
         matlabBinaryPath=WString::fromUTF8(serverIni.get<std::string>("Paths.MatlabBinary",WString(matlabBinaryPath).toUTF8()));
     }

@@ -81,7 +81,7 @@ ywStatusPage::ywStatusPage(ywApplication* parent)
     if (!app->configuration->disableYarraNews)
     {
         WString newsWidgetCode="<h4>Latest Yarra News</h4>";
-        newsWidgetCode+=       "<iframe src=\"https://yarra.rocks/doc/news/\" width=\"100%\" height=\"120px\" style=\"border:none\"></iframe>";
+        newsWidgetCode+=       "<iframe src=\"http://yarraframework.com/embed_news\" width=\"100%\" height=\"120px\" style=\"border:none\"></iframe>";
 
         WText* newsWidget=new WText();
         newsWidget->setTextFormat(XHTMLUnsafeText);

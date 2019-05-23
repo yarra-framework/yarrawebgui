@@ -19,7 +19,8 @@ public:
         MODE_PRIO    =2,
         MODE_NIGHT   =3,
         MODE_FAIL    =4,
-        MODE_FINISHED=5
+        MODE_FINISHED=5,
+        MODE_RESUMED =6
     };
 
     ywQueuePage(ywApplication* parent);
@@ -30,13 +31,16 @@ public:
     void refreshQueueList();
     void refreshFailList();
     void refreshFinishedList();
+    void refreshResumedList();
 
     void tabChanged(int);
     void clearQueueList();
     void clearFailList();
     void clearFinishedList();
+    void clearResumedList();
 
     void updateTaskInformation(WString taskName, WText* taskWidget, int taskType);
+    WString getResumedTaskInformation(WString taskName);
 
     void showInfo (WString taskName, int mode);
     void changePriority(WString taskName, int currentPriority, int newPriority);
@@ -53,6 +57,7 @@ public:
     Wt::WVBoxLayout* taskLayout;
     Wt::WVBoxLayout* failtaskLayout;
     Wt::WVBoxLayout* finishedtaskLayout;
+    Wt::WVBoxLayout* resumedtaskLayout;
     Wt::WTabWidget*  tabWidget;
 
     WPanel* createQueuePanel(WString title, int mode);
@@ -62,6 +67,7 @@ public:
     WString failPath;
     WString workPath;
     WString storagePath;
+    WString resumePath;
 
     bool lockTask(WString taskName);
     bool unlockTask(WString taskName);
@@ -71,7 +77,8 @@ public:
     WString getFullTaskFileName(WString taskName, int mode);
     WString getTaskFileName(WString taskName, int mode);
     WString getFolderTaskFile(WString taskName);
-    WString getWorkTaskFile();
+    WString getWorkTaskFile();    
+    WString getFolderResumeFile(WString taskName);
 
     bool getAllFilesOfTask(WString taskFileName, WStringList& fileList);
 
