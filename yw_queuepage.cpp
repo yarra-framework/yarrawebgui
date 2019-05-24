@@ -162,15 +162,29 @@ ywQueuePage::ywQueuePage(ywApplication* parent)
         resumedLayout->addWidget(resumedscrollArea);
     }
 
+    tabIndexQueue   =-1;
+    tabIndexResumed =-1;
+    tabIndexFail    =-1;
+    tabIndexFinished=-1;
+
     // Tab widget
     tabWidget = new Wt::WTabWidget();
-    tabWidget->addTab(queueContainer,    "Scheduled", Wt::WTabWidget::PreLoading);
-    tabWidget->addTab(failContainer,     "Failed",    Wt::WTabWidget::PreLoading);
-    tabWidget->addTab(finishedContainer, "Completed", Wt::WTabWidget::PreLoading);
+
+    tabWidget->addTab(queueContainer,      "Running & Scheduled", Wt::WTabWidget::PreLoading);
+    tabIndexQueue=tabWidget->count()-1;
+
     if (app->configuration->yarraEnableResume)
     {
-        tabWidget->addTab(resumedContainer,  "Suspended", Wt::WTabWidget::PreLoading);
+        tabWidget->addTab(resumedContainer,"Suspended",           Wt::WTabWidget::PreLoading);
+        tabIndexResumed=tabWidget->count()-1;
     }
+
+    tabWidget->addTab(finishedContainer,   "Succeeded",           Wt::WTabWidget::PreLoading);
+    tabIndexFinished=tabWidget->count()-1;
+
+    tabWidget->addTab(failContainer,       "Failed",              Wt::WTabWidget::PreLoading);
+    tabIndexFail=tabWidget->count()-1;
+
     tabWidget->currentChanged().connect(this, &ywQueuePage::tabChanged);
     tabWidget->setStyleClass("tabwidget");
 
@@ -235,19 +249,19 @@ void ywQueuePage::tabChanged(int)
 
 void ywQueuePage::refreshLists()
 {
-    if (tabWidget->currentIndex()==0)
+    if (tabWidget->currentIndex()==tabIndexQueue)
     {
         refreshQueueList();
     }
-    if (tabWidget->currentIndex()==1)
-    {
-        refreshFailList();
-    }
-    if (tabWidget->currentIndex()==2)
+    if (tabWidget->currentIndex()==tabIndexFinished)
     {
         refreshFinishedList();
     }
-    if (tabWidget->currentIndex()==3)
+    if (tabWidget->currentIndex()==tabIndexFail)
+    {
+        refreshFailList();
+    }
+    if (tabWidget->currentIndex()==tabIndexResumed)
     {
         refreshResumedList();
     }
@@ -334,10 +348,10 @@ WPanel* ywQueuePage::createQueuePanel(WString title, int mode)
         if (mode==MODE_RESUMED)
         {
             popup->addSeparator();
-            popup->addItem("Clear retry delay")->triggered().connect(std::bind([=] () {
+            popup->addItem("Resume without delay")->triggered().connect(std::bind([=] () {
                 clearResumeDelay(title);
             }));
-            popup->addItem("Pause / Resume")->triggered().connect(std::bind([=] () {
+            popup->addItem("Pause / Unpause")->triggered().connect(std::bind([=] () {
                 pauseResumeTask(title);
             }));
             popup->addSeparator();
@@ -559,16 +573,17 @@ WString ywQueuePage::getResumedTaskInformation(WString taskName)
 
         int state=resumefile.get<int>("Information.State",0);
 
+        resumeStatus+="Failed during ";
         switch (state)
         {
         case 4:
-            resumeStatus="PostProcessing";
+            resumeStatus+="PostProcessing";
             break;
         case 5:
-            resumeStatus="Transfer";
+            resumeStatus+="Transfer";
             break;
         default:
-            resumeStatus="Unknown";
+            resumeStatus+="Unknown";
             break;
         }
 
@@ -903,7 +918,7 @@ void ywQueuePage::refreshFinishedList()
 
     if (i==0)
     {
-        finishedLabel->setText("No finished tasks found.");
+        finishedLabel->setText("No succeeded tasks found.");
     }
 }
 
@@ -1074,7 +1089,7 @@ void ywQueuePage::refreshQueueList()
     {
         if (procTaskName.empty())
         {
-            scheduledLabel->setText("No tasks scheduled currently.");
+            scheduledLabel->setText("No tasks running or scheduled currently.");
         }
         else
         {
@@ -1196,6 +1211,18 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
             // For resume tasks, we need to create a lock file!
             if (mode==MODE_RESUMED)
             {
+                Wt::WMessageBox box2("Move to Fail List?","<p>Do you want to keep the task in the fail list?</p>\
+                                     <p><strong>Warning:</strong> Without moving the task to the fail list, the data will be lost permanently.</p>",
+                                     Wt::Question, Wt::Yes | Wt::No | Wt::Cancel);
+                box2.setDefaultButton(Wt::Yes);
+                box2.buttonClicked().connect(&box2, &WMessageBox::accept);
+                box2.exec();
+
+                if (box2.buttonResult()==Wt::Cancel)
+                {
+                    return;
+                }
+
                 if (ywHelper::isFolderLocked(taskPath))
                 {
                     showErrorMessage("Task is currently in use (locked).");
@@ -1205,6 +1232,22 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
                 {
                     showErrorMessage("Unable to lock task.");
                     return;
+                }
+
+                if (box2.buttonResult()==Wt::Yes)
+                {
+                    // TODO: Move the scan files to the fail folder
+                    if (!moveResumedtoFailed(taskPath))
+                    {
+                        showErrorMessage("Error while moving task to failed folder. Files will remain in /resume folder.");
+
+                        if (!ywHelper::unlockFile(taskPath+"/resume.lock"))
+                        {
+                            showErrorMessage("Unable to unlock task.");
+                        }
+
+                        return;
+                    }
                 }
             }
 
@@ -1426,6 +1469,85 @@ void ywQueuePage::deleteTask(WString taskName, int mode)
 }
 
 
+bool ywQueuePage::moveResumedtoFailed(WString resumedPath)
+{
+    WStringList fileList;
+    WString     taskFilename=getFolderTaskFile(resumedPath);
+    fs::path    taskFile(taskFilename.toUTF8());
+    WString     taskName=WString(taskFile.stem().generic_string());
+
+    // Remove the path from the full task filename and append to list
+    fileList.push_back(WString(taskFile.filename().generic_string()));
+
+    if (!getAllFilesOfTask(taskFilename, fileList))
+    {
+        return false;
+    }
+
+    WString  folderName=failPath+"/"+taskName;
+
+    // If the folder already exists, create a unique ID and append it to the
+    // taskname. This folder should never exist.
+    if (fs::exists(folderName.toUTF8()))
+    {
+        // Get the time stamp (including ms)
+        struct timeval  beg;
+        struct tm      *t;
+        gettimeofday( &beg, NULL );
+        t = localtime( &beg.tv_sec );
+        char tbuf[20];
+        sprintf(tbuf, "%02d%02d%02d%03d", t->tm_hour, t->tm_min, t->tm_sec, ((int) beg.tv_usec)/1000);
+
+        // Get the date stamp
+        time_t rawtime;
+        struct tm * timeinfo;
+        time (&rawtime);
+        timeinfo = localtime(&rawtime);
+        char dbuf[20];
+        strftime(dbuf,20,"%d%m%y",timeinfo);
+
+        WString uniqueID=WString::fromUTF8(dbuf)+WString::fromUTF8(tbuf);
+        folderName+="_"+uniqueID;
+    }
+
+    if (fs::exists(folderName.toUTF8()))
+    {
+        // If also the folder with time stamp already exists, then we have a problem.
+        return false;
+    }
+
+    try
+    {
+        fs::create_directory(folderName.toUTF8());
+    }
+    catch(const boost::filesystem::filesystem_error& e)
+    {
+        return false;
+    }
+
+    // Now move all files listed in the task file to the fail folder.
+    // The remaining files (created during the recon process) will be
+    // deleted by the parent function.
+    for (int i=0; i<fileList.size(); i++)
+    {
+        WString copyFile=fileList.at(i);
+        WString sourceFile=resumedPath+"/"+copyFile;
+        WString targetFile=folderName+"/"+copyFile;
+
+        try
+        {
+            fs::rename(sourceFile.toUTF8(),targetFile.toUTF8());
+        }
+        catch(const boost::filesystem::filesystem_error& e)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
 bool ywQueuePage::getAllFilesOfTask(WString taskFileName, WStringList& fileList)
 {
     if (!fs::exists(taskFileName.toUTF8()))
@@ -1556,7 +1678,6 @@ void ywQueuePage::patchTask(WString taskName, int mode)
 
     patchDialog->rejectWhenEscapePressed();
     patchDialog->setModal(true);
-
 
     // Process the dialog result.
     patchDialog->finished().connect(std::bind([=] () {
@@ -1715,7 +1836,6 @@ void ywQueuePage::restartTask(WString taskName, int mode)
         catch(const boost::filesystem::filesystem_error& e)
         {
         }
-
 
         bool existingFile=false;
 
