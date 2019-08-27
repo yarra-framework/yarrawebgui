@@ -139,3 +139,7 @@ HEADERS += \
     yw_configpage_update.h \
     yw_modulemanifest.h \
     yw_servermanifest.h
+
+target.path = /opt/yarra
+INSTALLS += target
+
