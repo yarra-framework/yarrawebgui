@@ -1,0 +1,28 @@
+FROM ubuntu:14.04
+RUN apt-get update
+WORKDIR build
+
+RUN apt-get install -y build-essential qt5-default ccache cmake libboost-all-dev libssl-dev libpq-dev libssl-dev libfcgi-dev
+RUN apt-get install -y wget
+WORKDIR /
+
+RUN mkdir wt
+WORKDIR wt/
+RUN wget https://github.com/emweb/wt/archive/3.3.12.tar.gz && tar xvxf 3.3.12.tar.gz
+
+WORKDIR wt-3.3.12
+RUN mkdir build && cd build && cmake .. -DSHARED_LIBS=OFF && make && make install
+
+RUN apt-get -y install git libglib2.0-dev libxml2-dev libjpeg-dev libx11-dev libxext-dev liblcms1-dev libltdl-dev
+
+ENV CCACHE_DIR=/ccache
+
+ADD . /build/
+
+RUN git clone https://RoyWiggins@bitbucket.org/yarra-dev/yarrasupport-ziplib.git /build/ziplib
+WORKDIR /build/ziplib
+RUN make
+WORKDIR /build
+
+
+ENTRYPOINT qmake && make install
